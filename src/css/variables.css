@@ -1,0 +1,97 @@
+/* WhatsApp Scheduler Design Tokens & CSS Custom Properties */
+:root {
+  /* Color Palette - WhatsApp Brand & Light Theme */
+  --wa-primary: #25D366;
+  --wa-primary-hover: #1EBE5D;
+  --wa-primary-active: #179E4D;
+  --wa-teal: #128C7E;
+  --wa-teal-dark: #075E54;
+  --wa-accent: #34B7F1;
+  --wa-danger: #EA4335;
+  --wa-danger-light: #FCE8E6;
+  --wa-warning: #FBBC04;
+  --wa-success: #25D366;
+
+  /* Surface & Background Colors (Light Mode) */
+  --bg-app: #F0F2F5;
+  --bg-frame: #EFEAE2;
+  --bg-surface: #FFFFFF;
+  --bg-surface-subtle: #F8F9FA;
+  --bg-surface-elevated: #FFFFFF;
+  --bg-hover: #F5F6F6;
+  --bg-active: #E9EDEF;
+  --bg-input: #FFFFFF;
+  --bg-chip: #E9EDEF;
+  --bg-badge-scheduled: #E8F5E9;
+  --text-badge-scheduled: #1B5E20;
+  --bg-badge-completed: #E3F2FD;
+  --text-badge-completed: #0D47A1;
+  
+  /* Text Colors */
+  --text-primary: #111B21;
+  --text-secondary: #667781;
+  --text-muted: #8696A0;
+  --text-on-primary: #FFFFFF;
+  --text-link: #00A884;
+
+  /* Borders & Dividers */
+  --border-color: #E9EDEF;
+  --border-subtle: #F0F2F5;
+  --border-focus: #00A884;
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 18px;
+  --border-radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(11, 20, 26, 0.08);
+  --shadow-md: 0 4px 12px rgba(11, 20, 26, 0.1);
+  --shadow-lg: 0 8px 24px rgba(11, 20, 26, 0.14);
+  --shadow-sheet: 0 -4px 28px rgba(11, 20, 26, 0.18);
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+
+  /* Layout Dimensions */
+  --app-max-width: 480px;
+  --header-height: 60px;
+  --bottom-safe-area: env(safe-area-inset-bottom, 16px);
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+  --bg-app: #0C1317;
+  --bg-frame: #0B141A;
+  --bg-surface: #111B21;
+  --bg-surface-subtle: #182229;
+  --bg-surface-elevated: #202C33;
+  --bg-hover: #202C33;
+  --bg-active: #2A3942;
+  --bg-input: #202C33;
+  --bg-chip: #222E35;
+  --bg-badge-scheduled: rgba(37, 211, 102, 0.15);
+  --text-badge-scheduled: #25D366;
+  --bg-badge-completed: rgba(52, 183, 241, 0.15);
+  --text-badge-completed: #34B7F1;
+
+  --text-primary: #E9EDEF;
+  --text-secondary: #8696A0;
+  --text-muted: #667781;
+  --text-on-primary: #111B21;
+  --text-link: #25D366;
+
+  --border-color: #222E35;
+  --border-subtle: #182229;
+  --border-focus: #25D366;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-sheet: 0 -4px 28px rgba(0, 0, 0, 0.6);
+}

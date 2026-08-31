@@ -1,0 +1,17 @@
+{
+  "name": "WhatsApp Scheduler",
+  "short_name": "WA Scheduler",
+  "description": "Schedule WhatsApp messages locally with reminders and one-tap sending.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B141A",
+  "theme_color": "#128C7E",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
