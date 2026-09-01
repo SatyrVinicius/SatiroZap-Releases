@@ -1,16 +1,14 @@
 /* App Layout & Structure */
 
-/* Main Container - Mobile First Frame */
+/* Main Container - Desktop Window */
 .app-viewport {
   width: 100%;
   max-width: var(--app-max-width);
   min-height: 100vh;
-  min-height: 100dvh;
   background-color: var(--bg-app);
   display: flex;
   flex-direction: column;
   position: relative;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.08);
   overflow: hidden;
 }
 
@@ -128,8 +126,8 @@
 .bottom-cta-bar {
   position: fixed;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
   width: 100%;
   max-width: var(--app-max-width);
   padding: 14px 16px calc(14px + var(--bottom-safe-area));

@@ -59,9 +59,9 @@
   --transition-spring: 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.15);
 
   /* Layout Dimensions */
-  --app-max-width: 480px;
+  --app-max-width: 100%;
   --header-height: 60px;
-  --bottom-safe-area: env(safe-area-inset-bottom, 16px);
+  --bottom-safe-area: 16px;
 }
 
 /* Dark Theme */

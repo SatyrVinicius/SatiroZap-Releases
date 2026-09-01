@@ -1,5 +1,7 @@
 /**
- * Application State Store with Server Synchronization
+ * Application State Store — Electron IPC Version
+ * Uses IPC event listeners for real-time push updates from the main process,
+ * plus a fallback polling interval for UI refresh.
  */
 
 import { API } from './api.js';
@@ -10,7 +12,7 @@ class AppState {
     this.messages = [];
     this.settings = Storage.getSettings();
     this.whatsapp = {
-      status: 'disconnected', // 'disconnected' | 'connecting' | 'qr_ready' | 'connected'
+      status: 'disconnected', // 'disconnected' | 'connecting' | 'qr_ready' | 'connected' | 'reconnecting'
       qrDataUrl: null,
       user: null,
       isConnected: false
@@ -21,19 +23,55 @@ class AppState {
     this.currentSheet = null; // 'create' | 'details' | 'edit' | 'contacts' | 'settings' | 'delete' | 'qr'
     this.listeners = new Set();
     this.pollInterval = null;
+    this.ipcCleanup = [];
   }
 
   async init() {
+    // Load settings from SQLite via IPC
+    await Storage.init();
+    this.settings = Storage.getSettings();
     this.applyTheme(this.settings.theme);
+
+    // Initial data fetch
     await this.refreshAll();
+
+    // Set up IPC event listeners for real-time push from main process
+    this.setupIpcListeners();
+
+    // Start fallback polling (every 5 seconds for UI refresh)
     this.startPolling();
+  }
+
+  /**
+   * Listen for real-time push events from the Electron main process
+   */
+  setupIpcListeners() {
+    if (!window.api) return;
+
+    // WhatsApp status changes (QR ready, connected, disconnected, etc.)
+    if (window.api.onWhatsAppUpdate) {
+      const unsub = window.api.onWhatsAppUpdate((data) => {
+        this.whatsapp = data;
+        this.notify();
+      });
+      this.ipcCleanup.push(unsub);
+    }
+
+    // Scheduler updates (message sent, failed, status changes)
+    if (window.api.onSchedulerUpdate) {
+      const unsub = window.api.onSchedulerUpdate(async (data) => {
+        // Refresh all messages from database when scheduler processes something
+        await this.refreshAll(true);
+      });
+      this.ipcCleanup.push(unsub);
+    }
   }
 
   startPolling() {
     if (this.pollInterval) return;
     this.pollInterval = setInterval(async () => {
       await this.refreshAll(false);
-    }, 3000);
+    }, 5000);
   }
 
   stopPolling() {

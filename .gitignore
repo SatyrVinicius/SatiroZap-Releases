@@ -7,6 +7,17 @@ node_modules/
 dist/
 build/
 
+# Electron build output
+release/
+build_out/
+dist_app/
+release_packager/
+*.exe
+*.msi
+*.dmg
+*.AppImage
+*.snap
+
 # WhatsApp Multi-Device Session Keys & Authentication (CRITICAL: Do NOT share)
 data/auth/
 data/auth/*

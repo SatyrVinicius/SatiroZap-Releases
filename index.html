@@ -1,33 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>WhatsApp Message Scheduler</title>
-  <meta name="description" content="24/7 Automated WhatsApp Message Scheduler. Connect via QR Code, write message, pick time, and messages are sent automatically.">
-  <meta name="theme-color" content="#128C7E">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="manifest" href="/manifest.json">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
+  <title>WhatsApp Scheduler</title>
 
   <!-- CSS Design System -->
-  <link rel="stylesheet" href="/src/css/variables.css">
-  <link rel="stylesheet" href="/src/css/reset.css">
-  <link rel="stylesheet" href="/src/css/layout.css">
-  <link rel="stylesheet" href="/src/css/components.css">
+  <link rel="stylesheet" href="./src/css/variables.css">
+  <link rel="stylesheet" href="./src/css/reset.css">
+  <link rel="stylesheet" href="./src/css/layout.css">
+  <link rel="stylesheet" href="./src/css/components.css">
 </head>
+
 <body>
 
-  <!-- Main Mobile App Viewport -->
+  <!-- Main Desktop App Viewport -->
   <main class="app-viewport">
-    
+
     <!-- Top Header -->
     <header class="app-header">
       <div class="header-brand">
         <div class="header-logo-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.49 3.53 1.35 5L2 22l5.14-1.32C8.59 21.53 10.25 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/>
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12c0 1.82.49 3.53 1.35 5L2 22l5.14-1.32C8.59 21.53 10.25 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z" />
           </svg>
         </div>
         <div class="header-title-group">
@@ -44,7 +42,12 @@
         </div>
 
         <button class="icon-btn" id="headerSettingsBtn" aria-label="Settings" title="Settings">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+            </path>
+          </svg>
         </button>
       </div>
     </header>
@@ -57,7 +60,10 @@
     <!-- Sticky Bottom CTA -->
     <footer class="bottom-cta-bar">
       <button class="btn btn-primary" id="bottomCtaBtn">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
         Schedule Message
       </button>
     </footer>
@@ -76,7 +82,10 @@
       <div class="sheet-header">
         <h2 class="sheet-title" id="qrSheetTitle">Connect WhatsApp Account</h2>
         <button class="icon-btn" data-close-sheet aria-label="Close">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
@@ -97,12 +106,15 @@
       <div class="sheet-header">
         <h2 class="sheet-title" id="createSheetTitle">Schedule WhatsApp Message</h2>
         <button class="icon-btn" data-close-sheet aria-label="Close">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
       <form id="createMessageForm" class="sheet-body">
-        
+
         <!-- Recipient Selection Field -->
         <div class="form-group">
           <label class="form-label">
@@ -120,8 +132,9 @@
             <span>Message</span>
             <span class="label-hint">Will be sent automatically</span>
           </label>
-          <textarea id="createMessageText" class="input-box textarea-box" placeholder="Write your WhatsApp message here..." rows="3" required></textarea>
-          
+          <textarea id="createMessageText" class="input-box textarea-box"
+            placeholder="Write your WhatsApp message here..." rows="3" required></textarea>
+
           <!-- Emoji Quick Picker Bar -->
           <div class="emoji-quick-bar">
             <button type="button" class="emoji-btn">👋</button>
@@ -177,19 +190,20 @@
       <div class="sheet-header">
         <h2 class="sheet-title" id="contactsSheetTitle">Select WhatsApp Contact</h2>
         <button class="icon-btn" data-close-sheet aria-label="Close">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
       <div class="sheet-body">
-        
-        <button type="button" class="btn btn-secondary" id="btnNativeContactPicker" style="width: 100%; margin-bottom: 16px; border: 1px dashed var(--border-color);">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          Choose from Device Contacts
-        </button>
 
         <div class="search-input-wrap">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
           <input type="text" id="contactSearchInput" class="input-box" placeholder="Search contacts...">
         </div>
 
@@ -199,7 +213,9 @@
 
         <div style="text-align: center; margin: 18px 0; position: relative;">
           <hr style="border: none; border-top: 1px solid var(--border-color);">
-          <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--bg-surface); padding: 0 10px; font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">OR ENTER PHONE NUMBER</span>
+          <span
+            style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--bg-surface); padding: 0 10px; font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">OR
+            ENTER PHONE NUMBER</span>
         </div>
 
         <form id="manualContactForm">
@@ -239,54 +255,73 @@
           <span id="detailStatus" class="status-badge scheduled">SCHEDULED</span>
         </div>
         <button class="icon-btn" data-close-sheet aria-label="Close">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
       <div class="sheet-body">
-        <div style="font-size: 0.85rem; color: var(--text-secondary); font-family: var(--font-mono); margin-bottom: 16px;" id="detailRecipientPhone">
+        <div
+          style="font-size: 0.85rem; color: var(--text-secondary); font-family: var(--font-mono); margin-bottom: 16px;"
+          id="detailRecipientPhone">
           --
         </div>
 
         <div class="form-group">
           <div class="form-label"><span>Message</span></div>
-          <div id="detailMessageText" style="background-color: var(--bg-surface-subtle); padding: 14px; border-radius: var(--border-radius-md); border-left: 4px solid var(--wa-primary); font-size: 0.95rem; line-height: 1.5; color: var(--text-primary);">
+          <div id="detailMessageText"
+            style="background-color: var(--bg-surface-subtle); padding: 14px; border-radius: var(--border-radius-md); border-left: 4px solid var(--wa-primary); font-size: 0.95rem; line-height: 1.5; color: var(--text-primary);">
             --
           </div>
         </div>
 
         <!-- Error Reason Banner if failed -->
-        <div id="detailErrorBox" style="display: none; background-color: var(--wa-danger-light); color: var(--wa-danger); padding: 10px 14px; border-radius: var(--border-radius-md); font-size: 0.85rem; margin-bottom: 16px; line-height: 1.4;">
+        <div id="detailErrorBox"
+          style="display: none; background-color: var(--wa-danger-light); color: var(--wa-danger); padding: 10px 14px; border-radius: var(--border-radius-md); font-size: 0.85rem; margin-bottom: 16px; line-height: 1.4;">
           <strong>Sending Error:</strong> <span id="detailErrorText">...</span>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0;">
-          <div style="background-color: var(--bg-surface-subtle); padding: 12px; border-radius: var(--border-radius-md);">
-            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Scheduled For</div>
-            <div id="detailScheduledDate" style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">--</div>
+          <div
+            style="background-color: var(--bg-surface-subtle); padding: 12px; border-radius: var(--border-radius-md);">
+            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">
+              Scheduled For</div>
+            <div id="detailScheduledDate"
+              style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">--</div>
           </div>
 
-          <div style="background-color: var(--bg-surface-subtle); padding: 12px; border-radius: var(--border-radius-md);">
-            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Delivery Status</div>
-            <div id="detailCountdown" style="font-size: 0.85rem; font-weight: 700; color: var(--wa-teal); margin-top: 4px;">--</div>
+          <div
+            style="background-color: var(--bg-surface-subtle); padding: 12px; border-radius: var(--border-radius-md);">
+            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">
+              Delivery Status</div>
+            <div id="detailCountdown"
+              style="font-size: 0.85rem; font-weight: 700; color: var(--wa-teal); margin-top: 4px;">--</div>
           </div>
         </div>
 
         <!-- Primary Action: Send Now automatically -->
         <button type="button" class="btn btn-primary" id="detailSendNowBtn" style="margin-bottom: 12px;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
           </svg>
           Send Immediately via WhatsApp
         </button>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <button type="button" class="btn btn-secondary" id="detailEditBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
             Edit
           </button>
           <button type="button" class="btn btn-danger-subtle" id="detailDeleteBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
             Delete
           </button>
         </div>
@@ -303,7 +338,10 @@
       <div class="sheet-header">
         <h2 class="sheet-title" id="editSheetTitle">Edit Scheduled Message</h2>
         <button class="icon-btn" data-close-sheet aria-label="Close">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
@@ -341,7 +379,8 @@
   <!-- ============================================================
        5. DELETE CONFIRMATION DIALOG
        ============================================================ -->
-  <div class="dialog-overlay" id="deleteDialog" role="alertdialog" aria-modal="true" aria-labelledby="deleteDialogTitle">
+  <div class="dialog-overlay" id="deleteDialog" role="alertdialog" aria-modal="true"
+    aria-labelledby="deleteDialogTitle">
     <div class="dialog-card">
       <h3 class="dialog-title" id="deleteDialogTitle">Delete this scheduled message?</h3>
       <p class="dialog-desc">This will remove the scheduled message from the automated sending queue.</p>
@@ -361,12 +400,15 @@
       <div class="sheet-header">
         <h2 class="sheet-title" id="settingsSheetTitle">Settings</h2>
         <button class="icon-btn" data-close-sheet aria-label="Close">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
       <div class="sheet-body">
-        
+
         <!-- WhatsApp Account Section -->
         <div class="settings-section">
           <div class="settings-section-title">WhatsApp Account (Multi-Device)</div>
@@ -374,9 +416,11 @@
             <div class="settings-item">
               <div class="settings-label-group">
                 <span class="settings-item-title" id="settingsWaStatusLabel">Checking status...</span>
-                <span class="settings-item-desc" id="settingsWaStatusSub">Connect to send messages automatically 24/7</span>
+                <span class="settings-item-desc" id="settingsWaStatusSub">Connect to send messages automatically
+                  24/7</span>
               </div>
-              <button type="button" class="btn btn-teal" id="settingsManageWaBtn" style="padding: 6px 14px; font-size: 0.8rem;">
+              <button type="button" class="btn btn-teal" id="settingsManageWaBtn"
+                style="padding: 6px 14px; font-size: 0.8rem;">
                 Manage
               </button>
             </div>
@@ -399,12 +443,14 @@
           <div class="settings-list">
             <div class="settings-item">
               <span class="settings-item-title">Version</span>
-              <span style="font-size: 0.85rem; color: var(--text-secondary); font-family: var(--font-mono);">2.1.0 (24/7 Automated Delivery)</span>
+              <span id="settingsAppVersion" style="font-size: 0.85rem; color: var(--text-secondary); font-family: var(--font-mono);">3.0.0 (Desktop
+                Edition)</span>
             </div>
             <div class="settings-item">
               <div class="settings-label-group">
                 <span class="settings-item-title">Architecture</span>
-                <span class="settings-item-desc">Multi-Device WebSocket Protocol (Baileys) + 24/7 Resilient Local Scheduler.</span>
+                <span class="settings-item-desc">Electron + Baileys Multi-Device + SQLite + Background
+                  Scheduler</span>
               </div>
             </div>
           </div>
@@ -415,6 +461,7 @@
   </div>
 
   <!-- Application Entry JS -->
-  <script type="module" src="/src/js/app.js"></script>
+  <script type="module" src="./src/js/app.js"></script>
 </body>
+
 </html>

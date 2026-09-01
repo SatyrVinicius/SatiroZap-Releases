@@ -6,7 +6,7 @@
 import { State } from './state.js';
 import { Storage } from './storage.js';
 import { API } from './api.js';
-import { ContactsService, COUNTRY_CODES } from './contacts.js';
+import { COUNTRY_CODES } from './contacts.js';
 import {
   formatDateLabel,
   formatFullDate,
@@ -60,7 +60,7 @@ export const UI = {
     if (waPill) {
       const status = State.whatsapp.status;
       waPill.className = `wa-status-pill ${status}`;
-      
+
       const textEl = waPill.querySelector('.wa-status-text');
       if (textEl) {
         if (status === 'connected') {
@@ -129,7 +129,7 @@ export const UI = {
       if (status === 'SENT') {
         const sentTime = msg.sentAt ? formatTimeLabel(msg.sentAt) : timeLabel;
         statusBadgeHtml = `<span class="status-badge sent"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> Sent</span>`;
-        
+
         // Completed Task Strikethrough Layout
         timingHtml = `
           <div class="schedule-datetime-group">
@@ -375,10 +375,10 @@ export const UI = {
 
     const now = new Date();
     const future = new Date(now.getTime() + 15 * 60 * 1000);
-    
+
     const dateInput = document.getElementById('createDate');
     const timeInput = document.getElementById('createTime');
-    
+
     if (dateInput) {
       dateInput.min = toInputDateFormat(now);
       dateInput.value = toInputDateFormat(future);
@@ -414,7 +414,7 @@ export const UI = {
     if (phoneEl) phoneEl.textContent = `+${sanitizePhoneNumber(msg.recipientPhone)}`;
     if (msgEl) msgEl.innerHTML = parseWhatsAppFormatting(msg.message);
     if (dateEl) dateEl.textContent = `${formatFullDate(msg.scheduledDateTime)} at ${formatTimeLabel(msg.scheduledDateTime)}`;
-    
+
     const status = (msg.status || 'SCHEDULED').toUpperCase();
     if (statusEl) {
       statusEl.textContent = status;
@@ -519,15 +519,15 @@ export const UI = {
 
     const renderContacts = (filterText = '') => {
       const contacts = Storage.getRecentContacts();
-      const filtered = contacts.filter(c => 
-        (c.name || '').toLowerCase().includes(filterText.toLowerCase()) || 
+      const filtered = contacts.filter(c =>
+        (c.name || '').toLowerCase().includes(filterText.toLowerCase()) ||
         (c.phone || '').includes(filterText)
       );
 
       if (filtered.length === 0) {
         listEl.innerHTML = `
           <div style="padding: 24px 16px; text-align: center; color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5;">
-            No saved contacts yet.<br>Choose from device contacts or enter a phone number below.
+            No saved contacts yet.<br>Enter a phone number below to add a contact.
           </div>
         `;
         return;
@@ -699,7 +699,7 @@ export const UI = {
 
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    
+
     let iconSvg = '';
     if (type === 'success') {
       iconSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>';
@@ -748,16 +748,7 @@ export const UI = {
       State.openSheet('contacts');
     });
 
-    // Native Device Contact Picker Button
-    document.getElementById('btnNativeContactPicker')?.addEventListener('click', async () => {
-      const contact = await ContactsService.pickNativeContact();
-      if (contact && contact.phone) {
-        this.selectContact(contact);
-        UI.showToast(`Selected contact: ${contact.name}`, 'success');
-      } else {
-        UI.showToast('Please enter contact number below', 'info');
-      }
-    });
+
 
     // Manual Contact Form
     document.getElementById('manualContactForm')?.addEventListener('submit', (e) => {
@@ -765,7 +756,7 @@ export const UI = {
       const dial = document.getElementById('manualCountryCode')?.value || '+1';
       const rawPhone = document.getElementById('manualPhoneInput')?.value || '';
       const name = document.getElementById('manualNameInput')?.value || 'Contact';
-      
+
       const fullPhone = dial + rawPhone;
       if (!isValidPhoneNumber(fullPhone)) {
         UI.showToast('Please enter a valid phone number', 'error');

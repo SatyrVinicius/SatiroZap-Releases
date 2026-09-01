@@ -1,16 +1,13 @@
 /**
- * Client API Service
- * Interacts with backend server for WhatsApp connection and message scheduling
+ * Client API Service — Electron IPC Version
+ * Communicates with the main process through the preload context bridge (window.api)
+ * No HTTP fetch calls — everything goes through secure IPC.
  */
-
-const API_BASE = '/api';
 
 export const API = {
   async getWhatsAppStatus() {
     try {
-      const res = await fetch(`${API_BASE}/whatsapp/status`);
-      if (!res.ok) throw new Error('Status fetch failed');
-      return await res.json();
+      return await window.api.getWhatsAppStatus();
     } catch (err) {
       console.warn('API Error (getWhatsAppStatus):', err);
       return { status: 'disconnected', qrDataUrl: null, user: null, isConnected: false };
@@ -19,8 +16,7 @@ export const API = {
 
   async connectWhatsApp() {
     try {
-      const res = await fetch(`${API_BASE}/whatsapp/connect`, { method: 'POST' });
-      return await res.json();
+      return await window.api.connectWhatsApp();
     } catch (err) {
       console.warn('API Error (connectWhatsApp):', err);
       return { status: 'disconnected' };
@@ -29,8 +25,7 @@ export const API = {
 
   async logoutWhatsApp() {
     try {
-      const res = await fetch(`${API_BASE}/whatsapp/logout`, { method: 'POST' });
-      return await res.json();
+      return await window.api.logoutWhatsApp();
     } catch (err) {
       console.warn('API Error (logoutWhatsApp):', err);
       return { success: false };
@@ -39,9 +34,7 @@ export const API = {
 
   async getMessages() {
     try {
-      const res = await fetch(`${API_BASE}/messages`);
-      if (!res.ok) throw new Error('Messages fetch failed');
-      return await res.json();
+      return await window.api.getMessages();
     } catch (err) {
       console.warn('API Error (getMessages):', err);
       return [];
@@ -49,53 +42,35 @@ export const API = {
   },
 
   async createMessage(data) {
-    const res = await fetch(`${API_BASE}/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || 'Failed to schedule message');
+    try {
+      return await window.api.createMessage(data);
+    } catch (err) {
+      throw new Error(err.message || 'Failed to schedule message');
     }
-    return await res.json();
   },
 
   async updateMessage(id, data) {
-    const res = await fetch(`${API_BASE}/messages/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || 'Failed to update message');
+    try {
+      return await window.api.updateMessage(id, data);
+    } catch (err) {
+      throw new Error(err.message || 'Failed to update message');
     }
-    return await res.json();
   },
 
   async deleteMessage(id) {
-    const res = await fetch(`${API_BASE}/messages/${id}`, {
-      method: 'DELETE'
-    });
-    return await res.json();
+    try {
+      return await window.api.deleteMessage(id);
+    } catch (err) {
+      console.warn('API Error (deleteMessage):', err);
+      return { success: false };
+    }
   },
 
   async sendNow(id) {
-    const res = await fetch(`${API_BASE}/messages/${id}/send-now`, {
-      method: 'POST'
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || 'Failed to send message');
+    try {
+      return await window.api.sendNow(id);
+    } catch (err) {
+      throw new Error(err.message || 'Failed to send message');
     }
-    return await res.json();
-  },
-
-  async loadSampleMessages() {
-    const res = await fetch(`${API_BASE}/messages/sample`, {
-      method: 'POST'
-    });
-    return await res.json();
   }
 };
