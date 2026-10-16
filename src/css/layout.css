@@ -31,14 +31,6 @@
   display: none;
 }
 
-.app-sidebar-top-logo {
-  width: 48px;
-  height: auto;
-  flex: 0 0 auto;
-  margin-top: 8px;
-  object-fit: contain;
-}
-
 .app-sidebar-logo {
   width: 34px;
   height: 45px;
@@ -77,9 +69,15 @@
   box-shadow: inset 3px 0 #25d366;
 }
 
-.app-sidebar-button.app-sidebar-google.active {
+.app-sidebar-button.app-sidebar-pms.active {
   color: #fff;
   box-shadow: inset 3px 0 #4285f4;
+}
+
+.app-sidebar-pms-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
 }
 
 .browser-chrome {
@@ -186,18 +184,17 @@ body.browser-page-active .app-viewport {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: #9aa0a6;
+  color: #fff;
+  background: #25d366;
   font-size: 17px;
   line-height: 1;
-  opacity: 0.72;
-  transition: background-color var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast);
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
 }
 
 .browser-chrome-toggle:hover,
 .browser-chrome-toggle:focus-visible {
-  color: #e8eaed;
-  background: #3c4043;
-  opacity: 1;
+  color: #fff;
+  background: #1fb85a;
 }
 
 .browser-toolbar {

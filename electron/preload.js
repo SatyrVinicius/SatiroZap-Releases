@@ -24,6 +24,11 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('navigation:page-changed', handler);
     return () => ipcRenderer.removeListener('navigation:page-changed', handler);
   },
+  onWhatsAppLinkSendStatus: (callback) => {
+    const handler = (_event, status) => callback(status);
+    ipcRenderer.on('whatsapp:link-send-status', handler);
+    return () => ipcRenderer.removeListener('whatsapp:link-send-status', handler);
+  },
   getBrowserState: () => ipcRenderer.invoke('browser:get-state'),
   toggleBrowserChrome: () => ipcRenderer.invoke('browser:toggle-chrome'),
   newBrowserTab: () => ipcRenderer.invoke('browser:new-tab'),

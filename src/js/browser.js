@@ -94,7 +94,7 @@ export function initBrowserControls(onError = () => {}) {
   newTabButton.addEventListener('click', async () => {
     try {
       render(await window.api.newBrowserTab());
-      addressInput.value = 'https://www.google.com/';
+      addressInput.value = 'https://pms.satirosistemas.com.br/';
     } catch (error) {
       onError(error);
     }

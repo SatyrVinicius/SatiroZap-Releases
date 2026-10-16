@@ -23,6 +23,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   window.api.onEmbeddedPageChanged(updateNavigationState);
+  window.api.onWhatsAppLinkSendStatus(({ status, phone, message }) => {
+    if (status === 'sending') UI.showToast(`Enviando mensagem para +${phone}...`, 'info');
+    else if (status === 'success') UI.showToast(`Mensagem enviada para +${phone}.`, 'success');
+    else if (status === 'error') UI.showToast(message || 'Não foi possível enviar a mensagem pelo WhatsApp.', 'error');
+  });
   navigationButtons.forEach((button) => {
     button.addEventListener('click', async () => {
       try {

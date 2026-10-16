@@ -23,21 +23,22 @@
   },
   "build": {
     "appId": "com.whatsapp.scheduler",
-    "productName": "SátiroZap",
+    "productName": "SátiroPMS",
     "directories": {
       "output": "build_out"
     },
     "compression": "store",
-    "artifactName": "SatiroZap-Setup-${version}.${ext}",
+    "artifactName": "SatiroPMS-Setup-${version}.${ext}",
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": "assets/icons/satirozap-app.ico"
+      "icon": "assets/icons/pms-satiro.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "shortcutName": "SátiroPMS",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },

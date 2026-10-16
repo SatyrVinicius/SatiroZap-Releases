@@ -18,7 +18,7 @@ let accessWindow = null;
 let startupAccessGranted = false;
 const browserTabs = [];
 let activeBrowserTabId = null;
-let activeEmbeddedPage = 'whatsapp';
+let activeEmbeddedPage = 'google';
 let browserChromeCollapsed = true;
 let browserSession = null;
 let attachmentsDirectory = null;
@@ -110,7 +110,7 @@ function saveAccessPassword(password) {
 async function showAccessBlockedMessage(message, type = 'error') {
   await dialog.showMessageBox({
     type,
-    title: 'SátiroZap',
+    title: 'SátiroPMS | Sátiro Sistemas',
     buttons: ['OK'],
     defaultId: 0,
     message
@@ -328,6 +328,36 @@ function normalizeBrowserPopupUrl(input) {
   throw new Error('O site tentou abrir um tipo de endereço não permitido.');
 }
 
+function getWhatsAppSendRequest(input) {
+  try {
+    const url = new URL(input);
+    if (url.protocol !== 'https:' || url.hostname !== 'api.whatsapp.com' || !/^\/send\/?$/.test(url.pathname)) return null;
+    const phone = url.searchParams.get('phone') || '';
+    const message = url.searchParams.get('text') || '';
+    if (!phone || !message.trim()) return null;
+    return { phone, message };
+  } catch {
+    return null;
+  }
+}
+
+function sendWhatsAppMessageFromLink(request) {
+  const phone = request.phone.replace(/\D/g, '');
+  const notify = (status, details = {}) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('whatsapp:link-send-status', { status, phone, ...details });
+    }
+  };
+
+  notify('sending');
+  whatsappClient.sendMessage(phone, request.message)
+    .then(() => notify('success'))
+    .catch((error) => {
+      console.error('[WhatsApp] Could not send message from website link:', error);
+      notify('error', { message: error.message || 'Não foi possível enviar a mensagem pelo WhatsApp.' });
+    });
+}
+
 function isAllowedBrowserNavigation(input) {
   try {
     const url = new URL(input);
@@ -423,7 +453,7 @@ function getBrowserSession() {
   return browserSession;
 }
 
-function createBrowserTab(initialUrl = 'https://www.google.com/') {
+function createBrowserTab(initialUrl = 'https://pms.satirosistemas.com.br/') {
   if (!mainWindow || mainWindow.isDestroyed()) throw new Error('A janela principal ainda não está pronta.');
   if (browserTabs.length >= 12) throw new Error('Limite de 12 abas abertas atingido.');
   const id = crypto.randomUUID();
@@ -441,6 +471,11 @@ function createBrowserTab(initialUrl = 'https://www.google.com/') {
   mainWindow.contentView.addChildView(view);
   view.setVisible(false);
   view.webContents.setWindowOpenHandler(({ url }) => {
+    const whatsappRequest = getWhatsAppSendRequest(url);
+    if (whatsappRequest) {
+      sendWhatsAppMessageFromLink(whatsappRequest);
+      return { action: 'deny' };
+    }
     try {
       const newTab = createBrowserTab(normalizeBrowserPopupUrl(url));
       selectBrowserTab(newTab.id);
@@ -690,7 +725,7 @@ if (!gotTheLock) {
  */
 function createWindow() {
   mainRendererReady = false;
-  const iconPath = path.join(__dirname, '..', 'assets', 'icons', 'satirozap-app.ico');
+  const iconPath = path.join(__dirname, '..', 'assets', 'icons', 'pms-satiro.ico');
   let appIcon;
   try {
     appIcon = nativeImage.createFromPath(iconPath);
@@ -721,6 +756,7 @@ function createWindow() {
 
   // Show window when ready (avoids white flash)
   mainWindow.once('ready-to-show', () => {
+    mainWindow.maximize();
     mainWindow.show();
   });
 
@@ -1243,7 +1279,7 @@ app.whenReady().then(async () => {
   // 5. Start WhatsApp client (auto-connect if session exists)
   whatsappClient.setMainWindow(mainWindow);
   await whatsappClient.init(app.getPath('userData'));
-  setEmbeddedPage('whatsapp');
+  setEmbeddedPage('google');
 
   // 6. Start the background scheduler
   scheduler.start();
