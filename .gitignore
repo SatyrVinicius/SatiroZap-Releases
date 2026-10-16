@@ -10,6 +10,7 @@ build/
 # Electron build output
 release/
 build_out/
+build_*/
 dist_app/
 release_packager/
 *.exe

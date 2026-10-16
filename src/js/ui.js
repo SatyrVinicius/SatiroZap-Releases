@@ -22,6 +22,11 @@ import {
 
 export const UI = {
   activeContact: null,
+  activeAttachment: null,
+  editingAttachmentMessageId: null,
+  editingAutoReplyId: null,
+  autoReplyAttachment: null,
+  autoReplyAttachmentIsPending: false,
 
   init() {
     this.bindGlobalEvents();
@@ -33,6 +38,11 @@ export const UI = {
    * Main Render Pipeline
    */
   render() {
+    if (State.pendingAutomationContact) {
+      const contact = State.pendingAutomationContact;
+      State.pendingAutomationContact = null;
+      this.openCreateSheet(contact);
+    }
     this.renderHeaderStatus();
     this.renderMessageList();
     this.syncSheets();
@@ -51,9 +61,11 @@ export const UI = {
       const failedCount = State.messages.filter(m => (m.status || '').toUpperCase() === 'FAILED').length;
 
       if (State.messages.length === 0) {
-        scheduledCountEl.textContent = 'No scheduled messages';
+        scheduledCountEl.textContent = 'Nenhuma mensagem agendada';
       } else {
-        scheduledCountEl.textContent = `${scheduledCount} scheduled · ${sentCount} sent${failedCount > 0 ? ` · ${failedCount} failed` : ''}`;
+        const scheduledLabel = `${scheduledCount} mensagem${scheduledCount === 1 ? '' : 's'} agendada${scheduledCount === 1 ? '' : 's'}`;
+        const sentLabel = `${sentCount} mensagem${sentCount === 1 ? '' : 's'} enviada${sentCount === 1 ? '' : 's'}`;
+        scheduledCountEl.textContent = `${scheduledLabel} · ${sentLabel}${failedCount > 0 ? ` · ${failedCount} com falha` : ''}`;
       }
     }
 
@@ -64,14 +76,14 @@ export const UI = {
       const textEl = waPill.querySelector('.wa-status-text');
       if (textEl) {
         if (status === 'connected') {
-          const userPhone = State.whatsapp.user?.phone || 'Connected';
-          textEl.textContent = `+${userPhone}`;
+          const userPhone = State.whatsapp.user?.phone;
+          textEl.textContent = userPhone ? `+${userPhone}` : 'Conectado';
         } else if (status === 'qr_ready') {
-          textEl.textContent = 'Scan QR';
-        } else if (status === 'connecting') {
-          textEl.textContent = 'Connecting...';
+          textEl.textContent = 'Abrir WhatsApp';
+        } else if (status === 'connecting' || status === 'reconnecting') {
+          textEl.textContent = 'Conectando...';
         } else {
-          textEl.textContent = 'Link Account';
+          textEl.textContent = 'Conectar conta';
         }
       }
     }
@@ -96,11 +108,11 @@ export const UI = {
               <circle cx="12" cy="15" r="2"></circle>
             </svg>
           </div>
-          <h2 class="empty-title">No scheduled messages</h2>
-          <p class="empty-subtitle">Schedule your first WhatsApp message.</p>
+          <h2 class="empty-title">Nenhuma mensagem agendada</h2>
+          <p class="empty-subtitle">Agende sua primeira mensagem do WhatsApp.</p>
           <button class="btn btn-primary" id="emptyScheduleBtn" style="max-width: 240px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            Schedule Message
+            Agendar mensagem
           </button>
         </div>
       `;
@@ -111,7 +123,7 @@ export const UI = {
 
     let html = `
       <div class="section-header">
-        <span class="section-title">Schedule Queue</span>
+        <span class="section-title">Fila de mensagens</span>
         <span class="section-count">${State.messages.length}</span>
       </div>
       <div class="messages-list">
@@ -122,26 +134,30 @@ export const UI = {
       const timeLabel = formatTimeLabel(msg.scheduledDateTime);
       const avatarInitial = (msg.recipientName || 'C').charAt(0).toUpperCase();
       const status = (msg.status || 'SCHEDULED').toUpperCase();
+      const attachmentIcon = ({ image: '🖼️', video: '🎬', audio: '🔊', document: '📄' })[msg.attachmentKind] || '📎';
+      const attachmentPreview = msg.attachmentId
+        ? `<div class="card-attachment-preview">${attachmentIcon} ${escapeHtml(msg.attachmentName)}</div>`
+        : '';
 
       let statusBadgeHtml = '';
       let timingHtml = '';
 
       if (status === 'SENT') {
         const sentTime = msg.sentAt ? formatTimeLabel(msg.sentAt) : timeLabel;
-        statusBadgeHtml = `<span class="status-badge sent"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> Sent</span>`;
+        statusBadgeHtml = `<span class="status-badge sent"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> Enviada</span>`;
 
         // Completed Task Strikethrough Layout
         timingHtml = `
           <div class="schedule-datetime-group">
-            <span class="scheduled-time-original">Scheduled for ${dateLabel} · ${timeLabel}</span>
+            <span class="scheduled-time-original">Agendada para ${dateLabel} · ${timeLabel}</span>
             <span class="sent-confirmation-time">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              Sent at ${sentTime}
+              Enviada às ${sentTime}
             </span>
           </div>
         `;
       } else if (status === 'FAILED') {
-        statusBadgeHtml = `<span class="status-badge failed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Failed</span>`;
+        statusBadgeHtml = `<span class="status-badge failed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Falhou</span>`;
         timingHtml = `
           <div class="schedule-datetime-pill">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -149,14 +165,14 @@ export const UI = {
           </div>
         `;
       } else if (status === 'SENDING') {
-        statusBadgeHtml = `<span class="status-badge sending">Sending...</span>`;
+        statusBadgeHtml = `<span class="status-badge sending">Enviando...</span>`;
         timingHtml = `
           <div class="schedule-datetime-pill">
-            <span style="color: var(--wa-accent); font-weight: 700;">In-flight delivery...</span>
+            <span style="color: var(--wa-accent); font-weight: 700;">Envio em andamento...</span>
           </div>
         `;
       } else {
-        statusBadgeHtml = `<span class="status-badge scheduled">Scheduled</span>`;
+        statusBadgeHtml = `<span class="status-badge scheduled">Agendada</span>`;
         timingHtml = `
           <div class="schedule-datetime-pill">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -178,7 +194,8 @@ export const UI = {
             ${statusBadgeHtml}
           </div>
 
-          <div class="card-message-preview">${parseWhatsAppFormatting(msg.message)}</div>
+          ${msg.message ? `<div class="card-message-preview">${parseWhatsAppFormatting(msg.message)}</div>` : ''}
+          ${attachmentPreview}
 
           ${msg.errorReason ? `
             <div class="card-error-notice">
@@ -192,21 +209,21 @@ export const UI = {
 
             <div class="card-actions" onclick="event.stopPropagation()">
               ${status === 'FAILED' ? `
-                <button class="card-action-btn retry-btn" data-action="send-now" data-id="${msg.id}" title="Retry sending">
+                <button class="card-action-btn retry-btn" data-action="send-now" data-id="${msg.id}" title="Tentar enviar novamente">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                  Retry
+                  Tentar novamente
                 </button>
               ` : status === 'SCHEDULED' ? `
-                <button class="card-action-btn send-now" data-action="send-now" data-id="${msg.id}" title="Send immediately via WhatsApp">
+                <button class="card-action-btn send-now" data-action="send-now" data-id="${msg.id}" title="Enviar agora pelo WhatsApp">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                  Send Now
+                  Enviar agora
                 </button>
               ` : ''}
               
-              <button class="card-action-btn" data-action="edit" data-id="${msg.id}" title="Edit">
+              <button class="card-action-btn" data-action="edit" data-id="${msg.id}" title="Editar">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               </button>
-              <button class="card-action-btn" data-action="delete" data-id="${msg.id}" title="Delete">
+              <button class="card-action-btn" data-action="delete" data-id="${msg.id}" title="Excluir">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
               </button>
             </div>
@@ -237,14 +254,14 @@ export const UI = {
         if (!msg) return;
 
         if (action === 'send-now') {
-          UI.showToast('Sending message via WhatsApp...', 'info');
+          UI.showToast('Enviando mensagem pelo WhatsApp...', 'info');
           try {
             await API.sendNow(id);
             await State.refreshAll();
-            UI.showToast('Message sent successfully!', 'success');
+            UI.showToast('Mensagem enviada com sucesso!', 'success');
           } catch (err) {
             await State.refreshAll();
-            UI.showToast(err.message || 'Failed to send message', 'error');
+            UI.showToast(err.message || 'Falha ao enviar mensagem.', 'error');
           }
         } else if (action === 'edit') {
           State.openSheet('edit', msg);
@@ -303,44 +320,44 @@ export const UI = {
             <path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.49 3.53 1.35 5L2 22l5.14-1.32C8.59 21.53 10.25 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
           </svg>
         </div>
-        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 6px;">WhatsApp Connected</h3>
+        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 6px;">WhatsApp conectado</h3>
         <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 20px;">
-          Linked as <strong>+${user?.phone || ''}</strong> (${user?.name || 'Account'})
+          Conectado como <strong>+${user?.phone || ''}</strong> (${user?.name || 'Conta'})
         </p>
         <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 24px;">
-          24/7 automated scheduler is connected and will send your messages automatically.
+          O agendador automático está conectado e enviará suas mensagens nos horários programados.
         </p>
         <button type="button" class="btn btn-danger-subtle" id="btnUnlinkWaBtn" style="width: 100%;">
-          Unlink Device / Disconnect
+          Desvincular dispositivo / desconectar
         </button>
       `;
 
       document.getElementById('btnUnlinkWaBtn')?.addEventListener('click', async () => {
-        UI.showToast('Disconnecting WhatsApp...', 'info');
+        UI.showToast('Desconectando do WhatsApp...', 'info');
         await API.logoutWhatsApp();
         await State.refreshAll();
-        UI.showToast('Disconnected from WhatsApp', 'info');
+        UI.showToast('Desconectado do WhatsApp.', 'info');
       });
     } else if (status === 'qr_ready' && qrDataUrl) {
       container.innerHTML = `
         <div class="qr-box">
-          <img src="${qrDataUrl}" alt="WhatsApp Multi-Device QR Code">
+          <img src="${qrDataUrl}" alt="Código QR multidispositivo do WhatsApp">
         </div>
         <div class="qr-instructions-list">
           <ol>
-            <li>Open <strong>WhatsApp</strong> on your phone</li>
-            <li>Tap <strong>Menu</strong> (Android) or <strong>Settings</strong> (iOS)</li>
-            <li>Tap <strong>Linked Devices</strong> ➔ <strong>Link a Device</strong></li>
-            <li>Point your phone's camera at this QR code</li>
+            <li>Abra o <strong>WhatsApp</strong> no celular</li>
+            <li>Toque em <strong>Menu</strong> (Android) ou <strong>Configurações</strong> (iOS)</li>
+            <li>Toque em <strong>Dispositivos conectados</strong> ➔ <strong>Conectar dispositivo</strong></li>
+            <li>Aponte a câmera do celular para este código QR</li>
           </ol>
         </div>
         <button type="button" class="btn btn-secondary" id="btnRefreshQr" style="width: 100%;">
-          🔄 Reload QR Code
+          🔄 Atualizar código QR
         </button>
       `;
 
       document.getElementById('btnRefreshQr')?.addEventListener('click', async () => {
-        UI.showToast('Generating fresh QR code...', 'info');
+        UI.showToast('Gerando um novo código QR...', 'info');
         await API.connectWhatsApp();
         await State.refreshAll();
       });
@@ -348,12 +365,12 @@ export const UI = {
       container.innerHTML = `
         <div style="padding: 40px 20px; text-align: center;">
           <div style="font-size: 1.5rem; margin-bottom: 12px;">⏳</div>
-          <div style="font-weight: 700; font-size: 1rem; margin-bottom: 8px;">Starting WhatsApp Client...</div>
+          <div style="font-weight: 700; font-size: 1rem; margin-bottom: 8px;">Conectar pelo WhatsApp Web</div>
           <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 18px;">
-            Establishing connection handshake...
+            A aba WhatsApp Web será aberta dentro do aplicativo. Faça login ou leia o QR exibido nela; mantenha o aplicativo aberto para enviar mensagens agendadas.
           </p>
           <button type="button" class="btn btn-teal" id="btnStartWaConnect" style="width: 100%;">
-            Start Connection
+            Abrir WhatsApp Web
           </button>
         </div>
       `;
@@ -368,8 +385,13 @@ export const UI = {
   /**
    * Opens Create Message Flow
    */
-  openCreateSheet() {
-    this.activeContact = null;
+  openCreateSheet(contact = null) {
+    if (this.activeAttachment?.pending) API.discardAttachment(this.activeAttachment.attachmentId);
+    this.activeAttachment = null;
+    this.editingAttachmentMessageId = null;
+    this.activeContact = contact && /^\d{7,15}$/.test(String(contact.phone || '').replace(/\D/g, ''))
+      ? { name: String(contact.name || contact.phone).trim(), phone: String(contact.phone).replace(/\D/g, '') }
+      : null;
     const form = document.getElementById('createMessageForm');
     if (form) form.reset();
 
@@ -388,8 +410,64 @@ export const UI = {
     }
 
     this.updateCreateContactPreview();
+    this.renderAttachmentPreview('create');
     this.clearErrors('createMessageForm');
     State.openSheet('create');
+  },
+
+  async chooseAttachment(target) {
+    this.attachmentTarget = target;
+    try {
+      const attachment = await API.selectAttachment();
+      if (!attachment) return;
+
+      if (this.activeAttachment?.pending) {
+        await API.discardAttachment(this.activeAttachment.attachmentId);
+      }
+      this.activeAttachment = { ...attachment, pending: true };
+      this.renderAttachmentPreview(target);
+    } catch (err) {
+      this.showToast(err.message || 'Não foi possível selecionar a mídia.', 'error');
+    }
+  },
+
+  async removeAttachment() {
+    if (this.activeAttachment?.pending) {
+      await API.discardAttachment(this.activeAttachment.attachmentId);
+    }
+    this.activeAttachment = null;
+    this.renderAttachmentPreview(this.attachmentTarget || 'create');
+  },
+
+  renderAttachmentPreview(target, attachment = this.activeAttachment) {
+    const preview = document.getElementById(`${target}AttachmentPreview`);
+    if (!preview) return;
+
+    const button = document.getElementById(`${target}AttachmentBtn`);
+    if (!attachment?.attachmentId) {
+      preview.hidden = true;
+      if (button) button.textContent = '📎 Anexar arquivo';
+      return;
+    }
+
+    preview.hidden = false;
+    preview.querySelector('.attachment-name').textContent = attachment.attachmentName;
+    preview.querySelector('.attachment-icon').textContent = ({
+      image: '🖼️',
+      video: '🎬',
+      audio: '🔊',
+      document: '📄'
+    })[attachment.attachmentKind] || '📎';
+    if (button) button.textContent = '🔄 Alterar arquivo';
+  },
+
+  async closeActiveSheet() {
+    if (this.activeAttachment?.pending) {
+      await API.discardAttachment(this.activeAttachment.attachmentId);
+    }
+    this.activeAttachment = null;
+    this.editingAttachmentMessageId = null;
+    State.closeSheet();
   },
 
   /**
@@ -412,24 +490,29 @@ export const UI = {
 
     if (nameEl) nameEl.textContent = msg.recipientName;
     if (phoneEl) phoneEl.textContent = `+${sanitizePhoneNumber(msg.recipientPhone)}`;
-    if (msgEl) msgEl.innerHTML = parseWhatsAppFormatting(msg.message);
-    if (dateEl) dateEl.textContent = `${formatFullDate(msg.scheduledDateTime)} at ${formatTimeLabel(msg.scheduledDateTime)}`;
+    if (msgEl) msgEl.innerHTML = msg.message ? parseWhatsAppFormatting(msg.message) : 'Mídia anexada, sem texto adicional.';
+    this.renderAttachmentPreview('detail', msg.attachmentId ? {
+      attachmentId: msg.attachmentId,
+      attachmentName: msg.attachmentName,
+      attachmentKind: msg.attachmentKind
+    } : null);
+    if (dateEl) dateEl.textContent = `${formatFullDate(msg.scheduledDateTime)} às ${formatTimeLabel(msg.scheduledDateTime)}`;
 
     const status = (msg.status || 'SCHEDULED').toUpperCase();
     if (statusEl) {
-      statusEl.textContent = status;
+      statusEl.textContent = ({ SCHEDULED: 'AGENDADA', SENDING: 'ENVIANDO', SENT: 'ENVIADA', FAILED: 'FALHOU' })[status] || status;
       statusEl.className = `status-badge ${status.toLowerCase()}`;
     }
 
     if (countdownEl) {
       if (status === 'SENT') {
-        countdownEl.textContent = `Sent at ${formatTimeLabel(msg.sentAt || msg.updatedAt)}`;
+        countdownEl.textContent = `Enviada às ${formatTimeLabel(msg.sentAt || msg.updatedAt)}`;
         countdownEl.style.color = 'var(--wa-teal)';
       } else if (status === 'FAILED') {
-        countdownEl.textContent = 'Delivery Failed';
+        countdownEl.textContent = 'Falha na entrega';
         countdownEl.style.color = 'var(--wa-danger)';
       } else if (status === 'SENDING') {
-        countdownEl.textContent = 'Sending now...';
+        countdownEl.textContent = 'Enviando agora...';
         countdownEl.style.color = 'var(--wa-accent)';
       } else {
         countdownEl.textContent = formatRelativeCountdown(msg.scheduledDateTime);
@@ -448,22 +531,22 @@ export const UI = {
 
     if (sendNowBtn) {
       if (status === 'SENT') {
-        sendNowBtn.textContent = 'Re-send Message via WhatsApp';
+        sendNowBtn.textContent = 'Reenviar pelo WhatsApp';
       } else if (status === 'FAILED') {
-        sendNowBtn.textContent = 'Retry Sending via WhatsApp';
+        sendNowBtn.textContent = 'Tentar enviar novamente pelo WhatsApp';
       } else {
-        sendNowBtn.textContent = 'Send Immediately via WhatsApp';
+        sendNowBtn.textContent = 'Enviar agora pelo WhatsApp';
       }
 
       sendNowBtn.onclick = async () => {
-        UI.showToast('Sending message via WhatsApp...', 'info');
+        UI.showToast('Enviando mensagem pelo WhatsApp...', 'info');
         try {
           await API.sendNow(msg.id);
           await State.refreshAll();
-          UI.showToast('Message sent successfully!', 'success');
+          UI.showToast('Mensagem enviada com sucesso!', 'success');
         } catch (err) {
           await State.refreshAll();
-          UI.showToast(err.message || 'Failed to send message', 'error');
+          UI.showToast(err.message || 'Falha ao enviar mensagem.', 'error');
         }
       };
     }
@@ -482,6 +565,18 @@ export const UI = {
    */
   populateEditSheet(msg) {
     if (!msg) return;
+    if (this.editingAttachmentMessageId !== msg.id) {
+      if (this.activeAttachment?.pending) API.discardAttachment(this.activeAttachment.attachmentId);
+      this.activeAttachment = msg.attachmentId ? {
+        attachmentId: msg.attachmentId,
+        attachmentName: msg.attachmentName,
+        attachmentMimeType: msg.attachmentMimeType,
+        attachmentKind: msg.attachmentKind
+      } : null;
+      this.editingAttachmentMessageId = msg.id;
+    }
+    this.attachmentTarget = 'edit';
+    this.renderAttachmentPreview('edit');
     this.activeContact = {
       name: msg.recipientName,
       phone: msg.recipientPhone
@@ -527,7 +622,7 @@ export const UI = {
       if (filtered.length === 0) {
         listEl.innerHTML = `
           <div style="padding: 24px 16px; text-align: center; color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5;">
-            No saved contacts yet.<br>Enter a phone number below to add a contact.
+            Nenhum contato salvo ainda.<br>Importe os contatos sincronizados ou informe um número abaixo.
           </div>
         `;
         return;
@@ -575,7 +670,7 @@ export const UI = {
         const opt = document.createElement('option');
         opt.value = c.dial;
         opt.textContent = `${c.flag} ${c.dial} (${c.name})`;
-        if (c.dial === '+1') opt.selected = true;
+        if (c.dial === '+55') opt.selected = true;
         countrySelect.appendChild(opt);
       });
     }
@@ -591,11 +686,11 @@ export const UI = {
 
     if (statusLabel && statusSub) {
       if (State.whatsapp.status === 'connected') {
-        statusLabel.textContent = `Connected (+${State.whatsapp.user?.phone || ''})`;
-        statusSub.textContent = '24/7 scheduler active & ready';
+        statusLabel.textContent = `Conectado (+${State.whatsapp.user?.phone || ''})`;
+        statusSub.textContent = 'Agendador ativo e pronto para enviar mensagens';
       } else {
-        statusLabel.textContent = 'Not Connected';
-        statusSub.textContent = 'Scan QR code to link device';
+        statusLabel.textContent = 'Não conectado';
+        statusSub.textContent = 'Abra a aba WhatsApp Web integrada para conectar';
       }
     }
 
@@ -608,6 +703,140 @@ export const UI = {
         }
       });
     }
+  },
+
+  async loadAutoReplyRules() {
+    const list = document.getElementById('autoReplyRulesList');
+    if (!list) return;
+    list.textContent = 'Carregando respostas automáticas...';
+    try {
+      this.renderAutoReplyRules(await API.getAutoReplyRules());
+    } catch (error) {
+      list.textContent = error.message || 'Não foi possível carregar as respostas automáticas.';
+    }
+  },
+
+  renderAutoReplyRules(rules) {
+    const list = document.getElementById('autoReplyRulesList');
+    if (!list) return;
+    list.replaceChildren();
+
+    if (!Array.isArray(rules) || rules.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'auto-replies-note';
+      empty.textContent = 'Nenhuma resposta automática cadastrada.';
+      list.appendChild(empty);
+      return;
+    }
+
+    rules.forEach((rule) => {
+      const row = document.createElement('div');
+      row.className = 'auto-reply-rule';
+
+      const toggle = document.createElement('input');
+      toggle.className = 'auto-reply-rule-toggle';
+      toggle.type = 'checkbox';
+      toggle.checked = Number(rule.enabled) === 1;
+      toggle.setAttribute('aria-label', `${toggle.checked ? 'Desativar' : 'Ativar'} resposta para ${rule.keyword}`);
+      toggle.addEventListener('change', async () => {
+        toggle.disabled = true;
+        try {
+          await API.setAutoReplyRuleEnabled(rule.id, toggle.checked);
+          this.showToast(toggle.checked ? 'Resposta automática ativada.' : 'Resposta automática desativada.', 'success');
+          await this.loadAutoReplyRules();
+        } catch (error) {
+          toggle.checked = !toggle.checked;
+          toggle.disabled = false;
+          this.showToast(error.message || 'Não foi possível alterar a regra.', 'error');
+        }
+      });
+
+      const content = document.createElement('div');
+      content.className = 'auto-reply-rule-content';
+      const keyword = document.createElement('span');
+      keyword.className = 'auto-reply-rule-keyword';
+      keyword.textContent = `Se receber: ${rule.keyword}`;
+      const reply = document.createElement('span');
+      reply.className = 'auto-reply-rule-text';
+      const mediaLabel = ({ audio: 'áudio', image: 'imagem', video: 'vídeo', document: 'documento' })[rule.attachmentKind] || 'arquivo';
+      const replyParts = [rule.reply ? rule.reply : null, rule.attachmentId ? `${mediaLabel}: ${rule.attachmentName || 'anexo'}` : null].filter(Boolean);
+      reply.textContent = `Responder: ${replyParts.join(' · ') || '—'}`;
+      content.append(keyword, reply);
+
+      const edit = document.createElement('button');
+      edit.className = 'auto-reply-rule-edit';
+      edit.type = 'button';
+      edit.textContent = '✎';
+      edit.title = 'Editar resposta automática';
+      edit.setAttribute('aria-label', `Editar resposta automática para ${rule.keyword}`);
+      edit.addEventListener('click', () => this.editAutoReplyRule(rule));
+
+      const remove = document.createElement('button');
+      remove.className = 'auto-reply-rule-delete';
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.title = 'Excluir resposta automática';
+      remove.setAttribute('aria-label', `Excluir resposta automática para ${rule.keyword}`);
+      remove.addEventListener('click', async () => {
+        if (!window.confirm(`Excluir a resposta automática para “${rule.keyword}”?`)) return;
+        remove.disabled = true;
+        try {
+          await API.deleteAutoReplyRule(rule.id);
+          if (this.editingAutoReplyId === rule.id) await this.resetAutoReplyForm();
+          this.showToast('Resposta automática excluída.', 'success');
+          await this.loadAutoReplyRules();
+        } catch (error) {
+          remove.disabled = false;
+          this.showToast(error.message || 'Não foi possível excluir a regra.', 'error');
+        }
+      });
+
+      row.append(toggle, content, edit, remove);
+      list.appendChild(row);
+    });
+  },
+
+  updateAutoReplyAttachmentPreview() {
+    const name = document.getElementById('autoReplyAttachmentName');
+    const remove = document.getElementById('autoReplyRemoveAttachmentBtn');
+    if (name) name.textContent = this.autoReplyAttachment?.attachmentName || 'Nenhum arquivo anexado';
+    if (name) name.title = this.autoReplyAttachment?.attachmentName || '';
+    if (remove) remove.hidden = !this.autoReplyAttachment;
+  },
+
+  async editAutoReplyRule(rule) {
+    if (this.autoReplyAttachmentIsPending && this.autoReplyAttachment?.attachmentId) {
+      await API.discardAttachment(this.autoReplyAttachment.attachmentId);
+    }
+    this.editingAutoReplyId = rule.id;
+    this.autoReplyAttachmentIsPending = false;
+    this.autoReplyAttachment = rule.attachmentId ? {
+      attachmentId: rule.attachmentId,
+      attachmentName: rule.attachmentName,
+      attachmentMimeType: rule.attachmentMimeType,
+      attachmentKind: rule.attachmentKind
+    } : null;
+    document.getElementById('autoReplyKeyword').value = rule.keyword || '';
+    document.getElementById('autoReplyText').value = rule.reply || '';
+    document.getElementById('autoReplySubmitBtn').textContent = 'Salvar alterações';
+    document.getElementById('autoReplyCancelEditBtn').hidden = false;
+    this.updateAutoReplyAttachmentPreview();
+    document.getElementById('autoReplyKeyword')?.focus();
+  },
+
+  async resetAutoReplyForm(discardPending = true) {
+    if (discardPending && this.autoReplyAttachmentIsPending && this.autoReplyAttachment?.attachmentId) {
+      await API.discardAttachment(this.autoReplyAttachment.attachmentId);
+    }
+    this.editingAutoReplyId = null;
+    this.autoReplyAttachment = null;
+    this.autoReplyAttachmentIsPending = false;
+    document.getElementById('autoReplyForm')?.reset();
+    const submit = document.getElementById('autoReplySubmitBtn');
+    if (submit) submit.textContent = 'Adicionar resposta automática';
+    const cancel = document.getElementById('autoReplyCancelEditBtn');
+    if (cancel) cancel.hidden = true;
+    this.updateAutoReplyAttachmentPreview();
   },
 
   selectContact(contact) {
@@ -633,7 +862,7 @@ export const UI = {
             <div style="font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-mono);">+${sanitizePhoneNumber(this.activeContact.phone)}</div>
           </div>
         </div>
-        <button type="button" class="btn btn-ghost" id="changeCreateContactBtn" style="padding: 4px 8px; font-size: 0.8rem; color: var(--wa-teal);">Change</button>
+        <button type="button" class="btn btn-ghost" id="changeCreateContactBtn" style="padding: 4px 8px; font-size: 0.8rem; color: var(--wa-teal);">Alterar</button>
       `;
 
       document.getElementById('changeCreateContactBtn')?.addEventListener('click', (e) => {
@@ -647,7 +876,7 @@ export const UI = {
           <div class="avatar-circle" style="background: var(--bg-chip); color: var(--text-secondary); width: 34px; height: 34px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           </div>
-          <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);">Select WhatsApp Contact</span>
+          <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);">Selecionar contato do WhatsApp</span>
         </div>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" color="var(--text-muted)"><polyline points="9 18 15 12 9 6"></polyline></svg>
       `;
@@ -667,7 +896,7 @@ export const UI = {
           <div style="font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-mono);">+${sanitizePhoneNumber(this.activeContact.phone)}</div>
         </div>
       </div>
-      <button type="button" class="btn btn-ghost" id="changeEditContactBtn" style="padding: 4px 8px; font-size: 0.8rem; color: var(--wa-teal);">Change</button>
+      <button type="button" class="btn btn-ghost" id="changeEditContactBtn" style="padding: 4px 8px; font-size: 0.8rem; color: var(--wa-teal);">Alterar</button>
     `;
 
     document.getElementById('changeEditContactBtn')?.addEventListener('click', (e) => {
@@ -731,15 +960,85 @@ export const UI = {
     document.getElementById('headerScheduleBtn')?.addEventListener('click', () => this.openCreateSheet());
     document.getElementById('headerSettingsBtn')?.addEventListener('click', () => State.openSheet('settings'));
     document.getElementById('bottomCtaBtn')?.addEventListener('click', () => this.openCreateSheet());
+    API.onAutoReplySettingsRequested?.(() => State.openSheet('settings'));
+
+    document.getElementById('autoRepliesToggleBtn')?.addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      const manager = document.getElementById('autoRepliesManager');
+      if (!manager) return;
+      const willOpen = manager.hidden;
+      manager.hidden = !willOpen;
+      button.setAttribute('aria-expanded', String(willOpen));
+      button.textContent = willOpen ? 'Fechar' : 'Configurar';
+      if (willOpen) await this.loadAutoReplyRules();
+    });
+
+    document.getElementById('autoReplyAttachmentBtn')?.addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        const attachment = await API.selectAttachment();
+        if (!attachment) return;
+        if (this.autoReplyAttachmentIsPending && this.autoReplyAttachment?.attachmentId) {
+          await API.discardAttachment(this.autoReplyAttachment.attachmentId);
+        }
+        this.autoReplyAttachment = attachment;
+        this.autoReplyAttachmentIsPending = true;
+        this.updateAutoReplyAttachmentPreview();
+      } catch (error) {
+        this.showToast(error.message || 'Não foi possível anexar a mídia.', 'error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById('autoReplyRemoveAttachmentBtn')?.addEventListener('click', async () => {
+      if (this.autoReplyAttachmentIsPending && this.autoReplyAttachment?.attachmentId) {
+        await API.discardAttachment(this.autoReplyAttachment.attachmentId);
+      }
+      this.autoReplyAttachment = null;
+      this.autoReplyAttachmentIsPending = false;
+      this.updateAutoReplyAttachmentPreview();
+    });
+
+    document.getElementById('autoReplyCancelEditBtn')?.addEventListener('click', async () => {
+      await this.resetAutoReplyForm();
+    });
+
+    document.getElementById('autoReplyForm')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const submit = form.querySelector('[type="submit"]');
+      const keyword = document.getElementById('autoReplyKeyword')?.value || '';
+      const reply = document.getElementById('autoReplyText')?.value || '';
+      submit.disabled = true;
+      try {
+        await API.saveAutoReplyRule({
+          id: this.editingAutoReplyId,
+          keyword,
+          reply,
+          attachmentId: this.autoReplyAttachment?.attachmentId || null
+        });
+        this.autoReplyAttachmentIsPending = false;
+        const wasEditing = Boolean(this.editingAutoReplyId);
+        await this.resetAutoReplyForm(false);
+        this.showToast(wasEditing ? 'Resposta automática atualizada.' : 'Resposta automática cadastrada e ativada.', 'success');
+        await this.loadAutoReplyRules();
+      } catch (error) {
+        this.showToast(error.message || 'Não foi possível salvar a resposta automática.', 'error');
+      } finally {
+        submit.disabled = false;
+      }
+    });
 
     // Close sheets
     document.querySelectorAll('[data-close-sheet]').forEach(btn => {
-      btn.addEventListener('click', () => State.closeSheet());
+      btn.addEventListener('click', () => this.closeActiveSheet());
     });
 
     document.querySelectorAll('.sheet-overlay, .dialog-overlay').forEach(overlay => {
       overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) State.closeSheet();
+        if (e.target === overlay) this.closeActiveSheet();
       });
     });
 
@@ -748,23 +1047,61 @@ export const UI = {
       State.openSheet('contacts');
     });
 
+    document.getElementById('importWhatsAppContactsBtn')?.addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Importando...';
+
+      try {
+        const result = await API.importWhatsAppContacts();
+        Storage.setContacts(result.contacts);
+        this.populateContactsSheet();
+
+        const total = result.imported + result.updated;
+        if (total > 0) {
+          this.showToast(`Contatos importados: ${result.imported} novos e ${result.updated} atualizados.`, 'success');
+        } else if (result.available > 0) {
+          this.showToast(`${result.available} contatos sincronizados; a lista já estava atualizada.`, 'info');
+        } else {
+          this.showToast('O WhatsApp não disponibilizou contatos nesta sincronização. Ele pode fornecer apenas contatos associados aos dados sincronizados.', 'info');
+        }
+      } catch (err) {
+        this.showToast(err.message || 'Falha ao importar contatos do WhatsApp.', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+
+    document.getElementById('createAttachmentBtn')?.addEventListener('click', () => this.chooseAttachment('create'));
+    document.getElementById('editAttachmentBtn')?.addEventListener('click', () => this.chooseAttachment('edit'));
+    document.getElementById('removeCreateAttachmentBtn')?.addEventListener('click', () => {
+      this.attachmentTarget = 'create';
+      this.removeAttachment();
+    });
+    document.getElementById('removeEditAttachmentBtn')?.addEventListener('click', () => {
+      this.attachmentTarget = 'edit';
+      this.removeAttachment();
+    });
+
 
 
     // Manual Contact Form
     document.getElementById('manualContactForm')?.addEventListener('submit', (e) => {
       e.preventDefault();
-      const dial = document.getElementById('manualCountryCode')?.value || '+1';
+      const dial = document.getElementById('manualCountryCode')?.value || '+55';
       const rawPhone = document.getElementById('manualPhoneInput')?.value || '';
-      const name = document.getElementById('manualNameInput')?.value || 'Contact';
+      const name = document.getElementById('manualNameInput')?.value || 'Contato';
 
       const fullPhone = dial + rawPhone;
       if (!isValidPhoneNumber(fullPhone)) {
-        UI.showToast('Please enter a valid phone number', 'error');
+        UI.showToast('Informe um número de telefone válido.', 'error');
         return;
       }
 
       this.selectContact({ name, phone: fullPhone });
-      UI.showToast(`Selected ${name}`, 'success');
+      UI.showToast(`Contato selecionado: ${name}`, 'success');
     });
 
     // Quick Time Preset Chips
@@ -810,24 +1147,24 @@ export const UI = {
       this.clearErrors('createMessageForm');
 
       if (!this.activeContact || !this.activeContact.phone) {
-        this.showFieldError(document.getElementById('createContactPreview'), 'Please select a contact.');
+        this.showFieldError(document.getElementById('createContactPreview'), 'Selecione um contato.');
         return;
       }
 
       const messageText = document.getElementById('createMessageText')?.value.trim();
-      if (!messageText) {
-        this.showFieldError(document.getElementById('createMessageText'), 'Please write a message.');
+      if (!messageText && !this.activeAttachment) {
+        this.showFieldError(document.getElementById('createMessageText'), 'Digite uma mensagem ou anexe uma mídia.');
         return;
       }
 
       const dateVal = document.getElementById('createDate')?.value;
       const timeVal = document.getElementById('createTime')?.value;
       if (!dateVal) {
-        this.showFieldError(document.getElementById('createDate'), 'Please select a date.');
+        this.showFieldError(document.getElementById('createDate'), 'Selecione uma data.');
         return;
       }
       if (!timeVal) {
-        this.showFieldError(document.getElementById('createTime'), 'Please select a time.');
+        this.showFieldError(document.getElementById('createTime'), 'Selecione um horário.');
         return;
       }
 
@@ -835,7 +1172,7 @@ export const UI = {
       const scheduledTimestamp = new Date(scheduledDateTime).getTime();
 
       if (isNaN(scheduledTimestamp) || scheduledTimestamp <= Date.now()) {
-        this.showFieldError(document.getElementById('createTime'), 'Scheduled time must be in the future.');
+        this.showFieldError(document.getElementById('createTime'), 'O horário agendado deve estar no futuro.');
         return;
       }
 
@@ -844,16 +1181,20 @@ export const UI = {
           recipientName: this.activeContact.name,
           recipientPhone: this.activeContact.phone,
           message: messageText,
-          scheduledDateTime: scheduledDateTime
+          scheduledDateTime: scheduledDateTime,
+          attachmentId: this.activeAttachment?.attachmentId || null
         });
 
         Storage.addRecentContact(this.activeContact);
 
         await State.refreshAll();
+        this.activeAttachment = null;
+        this.editingAttachmentMessageId = null;
+        this.renderAttachmentPreview('create');
         State.closeSheet();
-        UI.showToast('Message scheduled! 24/7 scheduler will send it automatically.', 'success');
+        UI.showToast('Mensagem agendada! O app fará o envio automaticamente.', 'success');
       } catch (err) {
-        this.showToast(err.message || 'Failed to schedule message', 'error');
+        this.showToast(err.message || 'Falha ao agendar a mensagem.', 'error');
       }
     });
 
@@ -864,20 +1205,20 @@ export const UI = {
       if (!State.editingMessage) return;
 
       if (!this.activeContact || !this.activeContact.phone) {
-        this.showFieldError(document.getElementById('editContactPreview'), 'Please select a contact.');
+        this.showFieldError(document.getElementById('editContactPreview'), 'Selecione um contato.');
         return;
       }
 
       const messageText = document.getElementById('editMessageText')?.value.trim();
-      if (!messageText) {
-        this.showFieldError(document.getElementById('editMessageText'), 'Please write a message.');
+      if (!messageText && !this.activeAttachment) {
+        this.showFieldError(document.getElementById('editMessageText'), 'Digite uma mensagem ou anexe uma mídia.');
         return;
       }
 
       const dateVal = document.getElementById('editDate')?.value;
       const timeVal = document.getElementById('editTime')?.value;
       if (!dateVal || !timeVal) {
-        this.showFieldError(document.getElementById('editDate'), 'Please select a valid date & time.');
+        this.showFieldError(document.getElementById('editDate'), 'Selecione uma data e um horário válidos.');
         return;
       }
 
@@ -890,14 +1231,18 @@ export const UI = {
           message: messageText,
           scheduledDateTime: scheduledDateTime,
           status: 'SCHEDULED',
-          errorReason: null
+          errorReason: null,
+          attachmentId: this.activeAttachment?.attachmentId || null
         });
 
         await State.refreshAll();
+        this.activeAttachment = null;
+        this.editingAttachmentMessageId = null;
+        this.renderAttachmentPreview('edit');
         State.closeSheet();
-        this.showToast('Message updated successfully.', 'success');
+        this.showToast('Mensagem atualizada com sucesso.', 'success');
       } catch (err) {
-        this.showToast(err.message || 'Failed to update message', 'error');
+        this.showToast(err.message || 'Falha ao atualizar a mensagem.', 'error');
       }
     });
 
@@ -908,9 +1253,9 @@ export const UI = {
           await API.deleteMessage(State.deletingMessageId);
           await State.refreshAll();
           State.closeSheet();
-          this.showToast('Scheduled message removed.', 'info');
+          this.showToast('Mensagem agendada removida.', 'info');
         } catch (err) {
-          this.showToast('Failed to delete message', 'error');
+          this.showToast('Falha ao excluir a mensagem.', 'error');
         }
       }
     });

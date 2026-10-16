@@ -360,6 +360,18 @@
   overflow: hidden;
 }
 
+.card-attachment-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 12px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .card-error-notice {
   font-size: 0.75rem;
   color: var(--wa-danger);
@@ -490,6 +502,63 @@
   line-height: 1.4;
 }
 
+.attachment-picker {
+  margin-top: 8px;
+}
+
+.attachment-button {
+  width: 100%;
+  border: 1px dashed var(--border-color);
+}
+
+.attachment-hint {
+  margin: 7px 2px 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.attachment-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  background-color: var(--bg-surface-subtle);
+}
+
+.attachment-preview[hidden] {
+  display: none;
+}
+
+.attachment-icon {
+  flex: 0 0 auto;
+  font-size: 1.2rem;
+}
+
+.attachment-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-remove {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  font-size: 0.75rem;
+}
+
+.detail-attachment-preview {
+  margin: -4px 0 16px;
+}
+
 .contact-selector-card {
   display: flex;
   align-items: center;
@@ -558,7 +627,8 @@
   z-index: 100;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  padding-top: 24px;
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--transition-normal);
@@ -570,8 +640,11 @@
 }
 
 .sheet-container {
-  width: 100%;
-  max-width: var(--app-max-width);
+  width: min(600px, calc(100vw - 32px)) !important;
+  min-width: 0;
+  max-width: 600px !important;
+  align-self: center;
+  flex: 0 0 auto;
   margin: 0 auto;
   background-color: var(--bg-surface);
   border-radius: 20px 20px 0 0;
@@ -912,6 +985,156 @@
 .settings-item-desc {
   font-size: 0.8rem;
   color: var(--text-secondary);
+}
+
+.auto-replies-manager {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  background: var(--bg-surface-subtle);
+}
+
+.auto-replies-manager[hidden] {
+  display: none;
+}
+
+.auto-reply-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auto-reply-form .form-group {
+  margin-bottom: 0;
+}
+
+.auto-reply-form .btn-primary {
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+
+.auto-reply-attachment-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.auto-reply-attachment-controls .btn-ghost {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  border: 1px solid var(--border-color);
+}
+
+.auto-reply-attachment-name {
+  min-width: 0;
+  flex: 1;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auto-reply-attachment-hint {
+  margin-top: -6px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.auto-reply-form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.auto-reply-form-actions .btn-primary {
+  flex: 1;
+}
+
+.auto-reply-form-actions .btn-ghost {
+  padding: 9px 12px;
+  font-size: 0.82rem;
+  border: 1px solid var(--border-color);
+}
+
+.auto-replies-note {
+  margin: 12px 2px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.auto-reply-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auto-reply-rule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background: var(--bg-surface);
+}
+
+.auto-reply-rule-content {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.auto-reply-rule-keyword {
+  color: var(--wa-teal);
+  font-size: 0.82rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.auto-reply-rule-text {
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.auto-reply-rule-toggle {
+  accent-color: var(--wa-primary);
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+
+.auto-reply-rule-delete {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+}
+
+.auto-reply-rule-edit {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+}
+
+.auto-reply-rule-edit:hover {
+  background: var(--bg-hover);
+  color: var(--wa-teal);
+}
+
+.auto-reply-rule-delete:hover {
+  background: var(--bg-hover);
+  color: var(--wa-danger);
 }
 
 /* Theme selector buttons */

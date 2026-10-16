@@ -38,7 +38,7 @@ app.post('/api/whatsapp/connect', async (req, res) => {
 app.post('/api/whatsapp/logout', async (req, res) => {
   try {
     await WhatsAppClient.logout();
-    res.json({ success: true, message: 'Logged out successfully' });
+    res.json({ success: true, message: 'Sessão desconectada com sucesso.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -56,7 +56,7 @@ app.get('/api/messages', (req, res) => {
 app.get('/api/messages/:id', (req, res) => {
   const message = Database.getMessageById(req.params.id);
   if (!message) {
-    return res.status(404).json({ error: 'Message not found' });
+    return res.status(404).json({ error: 'Mensagem não encontrada.' });
   }
   res.json(message);
 });
@@ -65,17 +65,17 @@ app.post('/api/messages', (req, res) => {
   const { recipientName, recipientPhone, message, scheduledDateTime } = req.body;
 
   if (!recipientPhone) {
-    return res.status(400).json({ error: 'Recipient phone number is required' });
+    return res.status(400).json({ error: 'O número de telefone do destinatário é obrigatório.' });
   }
   if (!message || !message.trim()) {
-    return res.status(400).json({ error: 'Message content is required' });
+    return res.status(400).json({ error: 'O conteúdo da mensagem é obrigatório.' });
   }
   if (!scheduledDateTime) {
-    return res.status(400).json({ error: 'Scheduled date and time is required' });
+    return res.status(400).json({ error: 'A data e o horário do agendamento são obrigatórios.' });
   }
 
   const created = Database.saveMessage({
-    recipientName: recipientName || 'WhatsApp Contact',
+    recipientName: recipientName || 'Contato do WhatsApp',
     recipientPhone,
     message,
     scheduledDateTime,
@@ -88,7 +88,7 @@ app.post('/api/messages', (req, res) => {
 app.put('/api/messages/:id', (req, res) => {
   const updated = Database.updateMessage(req.params.id, req.body);
   if (!updated) {
-    return res.status(404).json({ error: 'Message not found' });
+    return res.status(404).json({ error: 'Mensagem não encontrada.' });
   }
   res.json(updated);
 });

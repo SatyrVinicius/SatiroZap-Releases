@@ -5,6 +5,23 @@
  */
 
 export const API = {
+  async selectAttachment() {
+    try {
+      return await window.api.selectAttachment();
+    } catch (err) {
+      throw new Error(err.message || 'Não foi possível selecionar o arquivo.');
+    }
+  },
+
+  async discardAttachment(attachmentId) {
+    try {
+      return await window.api.discardAttachment(attachmentId);
+    } catch (err) {
+      console.warn('API Error (discardAttachment):', err);
+      return { success: false };
+    }
+  },
+
   async getWhatsAppStatus() {
     try {
       return await window.api.getWhatsAppStatus();
@@ -45,7 +62,7 @@ export const API = {
     try {
       return await window.api.createMessage(data);
     } catch (err) {
-      throw new Error(err.message || 'Failed to schedule message');
+      throw new Error(err.message || 'Falha ao agendar a mensagem.');
     }
   },
 
@@ -53,7 +70,7 @@ export const API = {
     try {
       return await window.api.updateMessage(id, data);
     } catch (err) {
-      throw new Error(err.message || 'Failed to update message');
+      throw new Error(err.message || 'Falha ao atualizar a mensagem.');
     }
   },
 
@@ -70,7 +87,55 @@ export const API = {
     try {
       return await window.api.sendNow(id);
     } catch (err) {
-      throw new Error(err.message || 'Failed to send message');
+      throw new Error(err.message || 'Falha ao enviar a mensagem.');
     }
+  },
+
+  async importWhatsAppContacts() {
+    try {
+      return await window.api.importWhatsAppContacts();
+    } catch (err) {
+      throw new Error(err.message || 'Falha ao importar contatos do WhatsApp.');
+    }
+  },
+
+  async getAutoReplyRules() {
+    return window.api.getAutoReplyRules();
+  },
+
+  async saveAutoReplyRule(data) {
+    try {
+      return await window.api.saveAutoReplyRule(data);
+    } catch (err) {
+      throw new Error(err.message || 'Não foi possível salvar a resposta automática.');
+    }
+  },
+
+  async setAutoReplyRuleEnabled(id, enabled) {
+    try {
+      return await window.api.setAutoReplyRuleEnabled(id, enabled);
+    } catch (err) {
+      throw new Error(err.message || 'Não foi possível alterar a resposta automática.');
+    }
+  },
+
+  async deleteAutoReplyRule(id) {
+    try {
+      return await window.api.deleteAutoReplyRule(id);
+    } catch (err) {
+      throw new Error(err.message || 'Não foi possível excluir a resposta automática.');
+    }
+  },
+
+  async automationRendererReady() {
+    return window.api.automationRendererReady();
+  },
+
+  onAutomationContact(callback) {
+    return window.api.onAutomationContact(callback);
+  },
+
+  onAutoReplySettingsRequested(callback) {
+    return window.api.onAutoReplySettingsRequested(callback);
   }
 };

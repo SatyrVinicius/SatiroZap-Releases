@@ -32,8 +32,10 @@ class WhatsAppManager {
     this.logger = null;
     this.connectionAttempts = 0;
     this.authDir = null;
+    this.userDataPath = null;
     this.mainWindow = null; // Reference to BrowserWindow for IPC push
     this.dependenciesLoaded = false;
+    this.syncedContacts = new Map();
   }
 
   /**
@@ -61,6 +63,8 @@ class WhatsAppManager {
    * @param {string} userDataPath - app.getPath('userData')
    */
   async init(userDataPath) {
+    if (userDataPath) this.userDataPath = userDataPath;
+
     if (this.status === 'connected' && this.sock) {
       return;
     }
@@ -110,6 +114,27 @@ class WhatsAppManager {
 
       // Save credentials whenever updated
       this.sock.ev.on('creds.update', saveCreds);
+
+      // Keep only contact data delivered by WhatsApp's history/contact sync events.
+      this.sock.ev.on('messaging-history.set', ({ contacts = [] } = {}) => {
+        this.cacheSyncedContacts(contacts);
+      });
+      this.sock.ev.on('contacts.upsert', (contacts = []) => {
+        this.cacheSyncedContacts(contacts);
+      });
+      this.sock.ev.on('contacts.update', (contacts = []) => {
+        this.cacheSyncedContacts(contacts);
+      });
+      this.sock.ev.on('chats.upsert', (chats = []) => {
+        this.cacheSyncedContacts(chats);
+      });
+      this.sock.ev.on('chats.update', (chats = []) => {
+        this.cacheSyncedContacts(chats);
+      });
+      this.sock.ev.on('chats.phoneNumberShare', ({ lid, jid } = {}) => {
+        if (!lid || !jid) return;
+        this.cacheSyncedContacts([{ id: lid, jid }]);
+      });
 
       // Handle connection updates
       this.sock.ev.on('connection.update', async (update) => {
@@ -162,7 +187,7 @@ class WhatsAppManager {
 
           const rawId = this.sock.user?.id || '';
           const phone = rawId.split(':')[0] || rawId.split('@')[0];
-          const name = this.sock.user?.name || 'WhatsApp Account';
+          const name = this.sock.user?.name || 'Conta do WhatsApp';
 
           this.user = { phone, name };
           console.log(`[WhatsApp] Successfully connected as ${name} (+${phone})`);
@@ -188,17 +213,67 @@ class WhatsAppManager {
     };
   }
 
+  cacheSyncedContacts(contacts) {
+    for (const contact of contacts) {
+      if (!contact || typeof contact !== 'object') continue;
+      const key = contact.id || contact.jid || contact.lid;
+      if (!key) continue;
+
+      const merged = { ...(this.syncedContacts.get(key) || {}) };
+      for (const [field, value] of Object.entries(contact)) {
+        if (value !== undefined && value !== null && value !== '') merged[field] = value;
+      }
+      this.syncedContacts.set(key, merged);
+    }
+  }
+
+  getSyncedContacts() {
+    const contactsByPhone = new Map();
+
+    for (const contact of this.syncedContacts.values()) {
+      const jid = [contact.jid, contact.id].find(value =>
+        typeof value === 'string' && /@s\.whatsapp\.net$/.test(value)
+      );
+      if (!jid) continue;
+
+      const localPart = jid.slice(0, jid.indexOf('@')).split(':')[0];
+      if (!/^\d{7,15}$/.test(localPart)) continue;
+
+      const name = [contact.name, contact.notify, contact.verifiedName, contact.pushName]
+        .find(value => typeof value === 'string' && value.trim());
+      const normalized = { name: (name || localPart).trim(), phone: localPart };
+      const existing = contactsByPhone.get(localPart);
+      if (!existing || (existing.name === localPart && normalized.name !== localPart)) {
+        contactsByPhone.set(localPart, normalized);
+      }
+    }
+
+    return [...contactsByPhone.values()];
+  }
+
+  async syncContacts() {
+    if (this.status !== 'connected' || !this.sock) {
+      throw new Error('Conecte o WhatsApp antes de sincronizar os contatos.');
+    }
+
+    await this.sock.resyncAppState(
+      ['critical_block', 'critical_unblock_low', 'regular_high', 'regular_low', 'regular'],
+      false
+    );
+    return this.getSyncedContacts();
+  }
+
   /**
    * Sends a WhatsApp message automatically via the Baileys socket
    */
-  async sendMessage(phone, messageText) {
+  async sendMessage(phone, messageText, attachment = null) {
     if (this.status !== 'connected' || !this.sock) {
-      throw new Error('WhatsApp is not connected. Please scan the QR code to link your account.');
+      throw new Error('O WhatsApp não está conectado. Escaneie o código QR para vincular sua conta.');
     }
 
     const cleanPhone = phone.replace(/[^\d]/g, '');
     if (!cleanPhone || cleanPhone.length < 7) {
-      throw new Error(`Invalid phone number: ${phone}`);
+      throw new Error(`Número de telefone inválido: ${phone}`);
     }
 
     const jid = `${cleanPhone}@s.whatsapp.net`;
@@ -206,9 +281,43 @@ class WhatsAppManager {
     try {
       console.log(`[WhatsApp] Sending message to ${cleanPhone}...`);
 
-      const sent = await this.sock.sendMessage(jid, {
-        text: messageText
-      });
+      let sent;
+      if (attachment?.attachmentId) {
+        if (!/^[0-9a-f-]{36}$/i.test(attachment.attachmentId)) {
+          throw new Error('Identificador de anexo inválido.');
+        }
+
+        const extension = path.extname(attachment.attachmentName || '').toLowerCase();
+        const attachmentPath = path.join(this.userDataPath, 'attachments', `${attachment.attachmentId}${extension}`);
+        const fileStats = fs.existsSync(attachmentPath) ? fs.statSync(attachmentPath) : null;
+        if (!fileStats?.isFile()) throw new Error('O arquivo anexado não foi encontrado.');
+        if (fileStats.size > 16 * 1024 * 1024) throw new Error('O arquivo anexado excede o limite de 16 MB.');
+
+        if (attachment.attachmentKind === 'image') {
+          sent = await this.sock.sendMessage(jid, {
+            image: { url: attachmentPath },
+            mimetype: attachment.attachmentMimeType,
+            ...(messageText ? { caption: messageText } : {})
+          });
+        } else if (attachment.attachmentKind === 'video') {
+          sent = await this.sock.sendMessage(jid, {
+            video: { url: attachmentPath },
+            mimetype: attachment.attachmentMimeType,
+            ...(messageText ? { caption: messageText } : {})
+          });
+        } else if (attachment.attachmentKind === 'audio') {
+          sent = await this.sock.sendMessage(jid, {
+            audio: { url: attachmentPath },
+            mimetype: attachment.attachmentMimeType,
+            ptt: false
+          });
+          if (messageText) await this.sock.sendMessage(jid, { text: messageText });
+        } else {
+          throw new Error('Tipo de mídia não compatível.');
+        }
+      } else {
+        sent = await this.sock.sendMessage(jid, { text: messageText });
+      }
 
       const messageId = sent?.key?.id || `msg_${Date.now()}`;
       console.log(`[WhatsApp] Message successfully sent to ${cleanPhone}! ID: ${messageId}`);
@@ -220,7 +329,7 @@ class WhatsAppManager {
       };
     } catch (err) {
       console.error(`[WhatsApp] Failed to send message to ${cleanPhone}:`, err);
-      throw new Error(err.message || 'Failed to send WhatsApp message');
+      throw new Error(err.message || 'Falha ao enviar mensagem pelo WhatsApp.');
     }
   }
 
@@ -252,6 +361,7 @@ class WhatsAppManager {
    */
   clearAuth() {
     try {
+      this.syncedContacts.clear();
       if (this.authDir && fs.existsSync(this.authDir)) {
         const files = fs.readdirSync(this.authDir);
         for (const file of files) {

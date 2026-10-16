@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
-  <title>WhatsApp Scheduler</title>
+  <title>SátiroZap</title>
+  <link rel="icon" type="image/x-icon" href="./assets/icons/satirozap-app.ico">
 
   <!-- CSS Design System -->
   <link rel="stylesheet" href="./src/css/variables.css">
@@ -16,6 +17,45 @@
 
 <body>
 
+  <nav class="app-sidebar" aria-label="Navegação do aplicativo">
+    <img class="app-sidebar-top-logo" src="./assets/icons/satirozap-header.png" alt="SátiroZap" title="SátiroZap">
+    <button class="app-sidebar-button" type="button" data-embedded-page="whatsapp"
+      aria-label="WhatsApp Web" title="WhatsApp Web — clique novamente para voltar à agenda">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12.04 2a9.9 9.9 0 0 0-8.46 15.04L2.2 22l5.12-1.34A9.95 9.95 0 1 0 12.04 2Zm0 18.18a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3.04.8.81-2.96-.2-.31A8.22 8.22 0 1 1 12.04 20.18Zm4.51-6.16c-.25-.13-1.48-.73-1.71-.81-.23-.09-.4-.13-.57.13-.17.25-.65.81-.8.97-.15.17-.3.19-.55.06-.25-.13-1.05-.39-2-1.23-.74-.66-1.24-1.48-1.39-1.73-.14-.25-.01-.39.11-.52.11-.11.25-.3.38-.45.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.45-.06-.13-.57-1.37-.78-1.88-.2-.49-.41-.42-.57-.43h-.49c-.17 0-.45.06-.68.32-.23.25-.89.87-.89 2.11s.91 2.45 1.04 2.62c.13.17 1.79 2.73 4.34 3.83.61.26 1.08.42 1.45.54.61.19 1.16.17 1.6.1.49-.07 1.48-.61 1.69-1.2.21-.59.21-1.09.15-1.2-.06-.1-.23-.17-.48-.29Z" />
+      </svg>
+    </button>
+    <div class="app-sidebar-spacer"></div>
+    <button class="app-sidebar-button app-sidebar-google" type="button" data-embedded-page="google"
+      aria-label="Abrir Google" title="Google — clique novamente para voltar à agenda">
+      <svg width="26" height="26" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#FFC107" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.1h6.6c3.9-3.6 6.1-8.8 6.1-15Z" />
+        <path fill="#FF3D00" d="M24 44c5.5 0 10.1-1.8 13.5-4.9l-6.6-5.1c-1.8 1.2-4.1 2-6.9 2-5.3 0-9.8-3.6-11.4-8.4H5.8v5.3A20 20 0 0 0 24 44Z" />
+        <path fill="#4CAF50" d="M12.6 27.6a12 12 0 0 1 0-7.2v-5.3H5.8a20 20 0 0 0 0 17.8l6.8-5.3Z" />
+        <path fill="#1976D2" d="M24 12c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 6 29.5 4 24 4A20 20 0 0 0 5.8 15.1l6.8 5.3C14.2 15.6 18.7 12 24 12Z" />
+      </svg>
+    </button>
+    <img class="app-sidebar-logo" src="./assets/icons/satirozap-logo-transparent.png" alt="Sátiro Sistemas" title="Sátiro Sistemas">
+  </nav>
+
+  <section class="browser-chrome" id="browserChrome" aria-label="Controles do navegador integrado">
+    <div class="browser-tabs-row">
+      <div class="browser-tabs" id="browserTabs" role="tablist" aria-label="Abas do navegador"></div>
+      <button class="browser-new-tab" id="browserNewTab" type="button" title="Nova aba" aria-label="Nova aba">+</button>
+      <button class="browser-chrome-toggle" id="browserChromeToggle" type="button"
+        title="Ocultar barra do navegador" aria-label="Ocultar barra do navegador" aria-expanded="true">⌃</button>
+    </div>
+    <form class="browser-toolbar" id="browserAddressForm">
+      <button class="browser-nav-button" type="button" data-browser-action="back" title="Voltar" aria-label="Voltar">‹</button>
+      <button class="browser-nav-button" type="button" data-browser-action="forward" title="Avançar" aria-label="Avançar">›</button>
+      <button class="browser-nav-button browser-reload" type="button" data-browser-action="reload" title="Recarregar" aria-label="Recarregar">↻</button>
+      <span class="browser-address-icon" aria-hidden="true">⌕</span>
+      <input id="browserAddress" class="browser-address" type="text" inputmode="url"
+        placeholder="Pesquisar ou digitar endereço" autocomplete="off" spellcheck="false" aria-label="Endereço ou pesquisa">
+      <button class="browser-go-button" type="submit">Ir</button>
+    </form>
+  </section>
+
   <!-- Main Desktop App Viewport -->
   <main class="app-viewport">
 
@@ -23,30 +63,38 @@
     <header class="app-header">
       <div class="header-brand">
         <div class="header-logo-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path
               d="M12 2C6.48 2 2 6.48 2 12c0 1.82.49 3.53 1.35 5L2 22l5.14-1.32C8.59 21.53 10.25 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z" />
           </svg>
         </div>
         <div class="header-title-group">
-          <h1>WhatsApp Scheduler</h1>
-          <div class="subtitle" id="headerScheduledCount">Checking 24/7 scheduler...</div>
+          <h1>Agendador WhatsApp</h1>
+          <div class="subtitle" id="headerScheduledCount">Verificando agendador 24/7...</div>
         </div>
       </div>
 
       <div class="header-actions">
         <!-- Live WhatsApp Connection Status Pill -->
-        <div class="wa-status-pill disconnected" id="headerWaStatusPill" title="Click to manage WhatsApp Connection">
+        <div class="wa-status-pill disconnected" id="headerWaStatusPill" title="Clique para gerenciar a conexão do WhatsApp">
           <span class="wa-status-dot"></span>
-          <span class="wa-status-text">Disconnected</span>
+          <span class="wa-status-text">Desconectado</span>
         </div>
 
-        <button class="icon-btn" id="headerSettingsBtn" aria-label="Settings" title="Settings">
+        <button class="icon-btn" id="headerSettingsBtn" aria-label="Configurações" title="Configurações">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"></circle>
             <path
               d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
             </path>
+          </svg>
+        </button>
+
+        <button class="icon-btn" type="button" data-embedded-page="whatsapp"
+          aria-label="Voltar para o WhatsApp Web" title="Voltar para o WhatsApp Web">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
       </div>
@@ -64,7 +112,7 @@
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
-        Schedule Message
+        Agendar mensagem
       </button>
     </footer>
 
@@ -80,8 +128,8 @@
     <div class="sheet-container">
       <div class="sheet-grabber"></div>
       <div class="sheet-header">
-        <h2 class="sheet-title" id="qrSheetTitle">Connect WhatsApp Account</h2>
-        <button class="icon-btn" data-close-sheet aria-label="Close">
+        <h2 class="sheet-title" id="qrSheetTitle">Conectar conta do WhatsApp</h2>
+        <button class="icon-btn" data-close-sheet aria-label="Fechar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -104,8 +152,8 @@
     <div class="sheet-container">
       <div class="sheet-grabber"></div>
       <div class="sheet-header">
-        <h2 class="sheet-title" id="createSheetTitle">Schedule WhatsApp Message</h2>
-        <button class="icon-btn" data-close-sheet aria-label="Close">
+        <h2 class="sheet-title" id="createSheetTitle">Agendar mensagem no WhatsApp</h2>
+        <button class="icon-btn" data-close-sheet aria-label="Fechar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -118,8 +166,8 @@
         <!-- Recipient Selection Field -->
         <div class="form-group">
           <label class="form-label">
-            <span>Recipient</span>
-            <span class="label-hint">Required</span>
+            <span>Destinatário</span>
+            <span class="label-hint">Obrigatório</span>
           </label>
           <div class="contact-selector-card" id="createContactPreview">
             <!-- Populated dynamically by UI.js -->
@@ -129,11 +177,11 @@
         <!-- Message Body Input -->
         <div class="form-group">
           <label class="form-label" for="createMessageText">
-            <span>Message</span>
-            <span class="label-hint">Will be sent automatically</span>
+            <span>Mensagem</span>
+            <span class="label-hint">Será enviada automaticamente</span>
           </label>
           <textarea id="createMessageText" class="input-box textarea-box"
-            placeholder="Write your WhatsApp message here..." rows="3" required></textarea>
+            placeholder="Digite sua mensagem do WhatsApp..." rows="3"></textarea>
 
           <!-- Emoji Quick Picker Bar -->
           <div class="emoji-quick-bar">
@@ -146,36 +194,45 @@
             <button type="button" class="emoji-btn">💼</button>
             <button type="button" class="emoji-btn">✅</button>
           </div>
+          <div class="attachment-picker">
+            <button type="button" class="btn btn-secondary attachment-button" id="createAttachmentBtn">📎 Anexar arquivo</button>
+            <p class="attachment-hint">Imagens, vídeos, áudios e documentos até 16 MB. O texto será legenda quando compatível; para áudios, será enviado em outra mensagem.</p>
+            <div class="attachment-preview" id="createAttachmentPreview" hidden>
+              <span class="attachment-icon" aria-hidden="true"></span>
+              <span class="attachment-name"></span>
+              <button type="button" class="btn btn-ghost attachment-remove" id="removeCreateAttachmentBtn">Remover</button>
+            </div>
+          </div>
         </div>
 
         <!-- Quick Time Presets -->
         <div class="form-group" style="margin-bottom: 12px;">
           <label class="form-label">
-            <span>Quick Shortcuts</span>
-            <span class="label-hint">Fast select</span>
+            <span>Atalhos rápidos</span>
+            <span class="label-hint">Seleção rápida</span>
           </label>
           <div class="chips-row">
-            <button type="button" class="chip-btn" data-shortcut="15m">+15 Mins</button>
-            <button type="button" class="chip-btn" data-shortcut="1h">+1 Hour</button>
-            <button type="button" class="chip-btn" data-shortcut="tomorrow9am">Tomorrow 9 AM</button>
-            <button type="button" class="chip-btn" data-shortcut="tomorrow6pm">Tomorrow 6 PM</button>
+            <button type="button" class="chip-btn" data-shortcut="15m">+15 min</button>
+            <button type="button" class="chip-btn" data-shortcut="1h">+1 hora</button>
+            <button type="button" class="chip-btn" data-shortcut="tomorrow9am">Amanhã, às 9h</button>
+            <button type="button" class="chip-btn" data-shortcut="tomorrow6pm">Amanhã, às 18h</button>
           </div>
         </div>
 
         <!-- Date & Time Grid -->
         <div class="datetime-grid">
           <div class="form-group">
-            <label class="form-label" for="createDate">Date</label>
+            <label class="form-label" for="createDate">Data</label>
             <input type="date" id="createDate" class="input-box" required>
           </div>
           <div class="form-group">
-            <label class="form-label" for="createTime">Time</label>
+            <label class="form-label" for="createTime">Horário</label>
             <input type="time" id="createTime" class="input-box" required>
           </div>
         </div>
 
         <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
-          Schedule Message
+          Agendar mensagem
         </button>
       </form>
     </div>
@@ -188,8 +245,8 @@
     <div class="sheet-container">
       <div class="sheet-grabber"></div>
       <div class="sheet-header">
-        <h2 class="sheet-title" id="contactsSheetTitle">Select WhatsApp Contact</h2>
-        <button class="icon-btn" data-close-sheet aria-label="Close">
+        <h2 class="sheet-title" id="contactsSheetTitle">Selecionar contato do WhatsApp</h2>
+        <button class="icon-btn" data-close-sheet aria-label="Fechar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -199,12 +256,19 @@
 
       <div class="sheet-body">
 
+        <button type="button" class="btn btn-secondary" id="importWhatsAppContactsBtn" style="width: 100%; margin-bottom: 10px;">
+          Importar contatos do WhatsApp
+        </button>
+        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 2px 12px; line-height: 1.4;">
+          Importa os contatos disponibilizados pela sincronização do WhatsApp. A lista pode não incluir toda a agenda.
+        </p>
+
         <div class="search-input-wrap">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <input type="text" id="contactSearchInput" class="input-box" placeholder="Search contacts...">
+          <input type="text" id="contactSearchInput" class="input-box" placeholder="Buscar contatos...">
         </div>
 
         <div class="contacts-list" id="contactsListContainer">
@@ -214,28 +278,28 @@
         <div style="text-align: center; margin: 18px 0; position: relative;">
           <hr style="border: none; border-top: 1px solid var(--border-color);">
           <span
-            style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--bg-surface); padding: 0 10px; font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">OR
-            ENTER PHONE NUMBER</span>
+            style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--bg-surface); padding: 0 10px; font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">OU
+            INFORME O NÚMERO DE TELEFONE</span>
         </div>
 
         <form id="manualContactForm">
           <div class="form-group" style="margin-bottom: 10px;">
-            <label class="form-label" for="manualNameInput">Contact Name</label>
-            <input type="text" id="manualNameInput" class="input-box" placeholder="Contact name" required>
+            <label class="form-label" for="manualNameInput">Nome do contato</label>
+            <input type="text" id="manualNameInput" class="input-box" placeholder="Nome do contato" required>
           </div>
 
           <div class="form-group" style="margin-bottom: 14px;">
-            <label class="form-label">Phone Number</label>
+            <label class="form-label">Número de telefone</label>
             <div style="display: grid; grid-template-columns: 140px 1fr; gap: 8px;">
               <select id="manualCountryCode" class="input-box" style="font-size: 0.85rem; padding: 12px 6px;">
                 <!-- Populated dynamically -->
               </select>
-              <input type="tel" id="manualPhoneInput" class="input-box" placeholder="Phone digits" required>
+              <input type="tel" id="manualPhoneInput" class="input-box" placeholder="DDD e número" required>
             </div>
           </div>
 
           <button type="submit" class="btn btn-teal" style="width: 100%;">
-            Use This Contact
+            Usar este contato
           </button>
         </form>
 
@@ -251,10 +315,10 @@
       <div class="sheet-grabber"></div>
       <div class="sheet-header">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <h2 class="sheet-title" id="detailRecipientName">Contact</h2>
-          <span id="detailStatus" class="status-badge scheduled">SCHEDULED</span>
+          <h2 class="sheet-title" id="detailRecipientName">Contato</h2>
+          <span id="detailStatus" class="status-badge scheduled">AGENDADA</span>
         </div>
-        <button class="icon-btn" data-close-sheet aria-label="Close">
+        <button class="icon-btn" data-close-sheet aria-label="Fechar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -270,24 +334,29 @@
         </div>
 
         <div class="form-group">
-          <div class="form-label"><span>Message</span></div>
+          <div class="form-label"><span>Mensagem</span></div>
           <div id="detailMessageText"
             style="background-color: var(--bg-surface-subtle); padding: 14px; border-radius: var(--border-radius-md); border-left: 4px solid var(--wa-primary); font-size: 0.95rem; line-height: 1.5; color: var(--text-primary);">
             --
           </div>
         </div>
 
+        <div class="attachment-preview detail-attachment-preview" id="detailAttachmentPreview" hidden>
+          <span class="attachment-icon" aria-hidden="true"></span>
+          <span class="attachment-name"></span>
+        </div>
+
         <!-- Error Reason Banner if failed -->
         <div id="detailErrorBox"
           style="display: none; background-color: var(--wa-danger-light); color: var(--wa-danger); padding: 10px 14px; border-radius: var(--border-radius-md); font-size: 0.85rem; margin-bottom: 16px; line-height: 1.4;">
-          <strong>Sending Error:</strong> <span id="detailErrorText">...</span>
+          <strong>Erro no envio:</strong> <span id="detailErrorText">...</span>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0;">
           <div
             style="background-color: var(--bg-surface-subtle); padding: 12px; border-radius: var(--border-radius-md);">
             <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">
-              Scheduled For</div>
+              Agendada para</div>
             <div id="detailScheduledDate"
               style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">--</div>
           </div>
@@ -295,7 +364,7 @@
           <div
             style="background-color: var(--bg-surface-subtle); padding: 12px; border-radius: var(--border-radius-md);">
             <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">
-              Delivery Status</div>
+              Status de entrega</div>
             <div id="detailCountdown"
               style="font-size: 0.85rem; font-weight: 700; color: var(--wa-teal); margin-top: 4px;">--</div>
           </div>
@@ -306,7 +375,7 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
           </svg>
-          Send Immediately via WhatsApp
+          Enviar agora pelo WhatsApp
         </button>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -315,14 +384,14 @@
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
             </svg>
-            Edit
+            Editar
           </button>
           <button type="button" class="btn btn-danger-subtle" id="detailDeleteBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"></polyline>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             </svg>
-            Delete
+            Excluir
           </button>
         </div>
       </div>
@@ -336,8 +405,8 @@
     <div class="sheet-container">
       <div class="sheet-grabber"></div>
       <div class="sheet-header">
-        <h2 class="sheet-title" id="editSheetTitle">Edit Scheduled Message</h2>
-        <button class="icon-btn" data-close-sheet aria-label="Close">
+        <h2 class="sheet-title" id="editSheetTitle">Editar mensagem agendada</h2>
+        <button class="icon-btn" data-close-sheet aria-label="Fechar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -347,30 +416,39 @@
 
       <form id="editMessageForm" class="sheet-body">
         <div class="form-group">
-          <label class="form-label">Recipient</label>
+          <label class="form-label">Destinatário</label>
           <div class="contact-selector-card has-contact" id="editContactPreview">
             <!-- Injected by UI.js -->
           </div>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="editMessageText">Message</label>
-          <textarea id="editMessageText" class="input-box textarea-box" rows="3" required></textarea>
+          <label class="form-label" for="editMessageText">Mensagem</label>
+          <textarea id="editMessageText" class="input-box textarea-box" rows="3"></textarea>
+          <div class="attachment-picker">
+            <button type="button" class="btn btn-secondary attachment-button" id="editAttachmentBtn">📎 Anexar arquivo</button>
+            <p class="attachment-hint">Imagens, vídeos, áudios e documentos até 16 MB. O texto será legenda quando compatível; para áudios, será enviado em outra mensagem.</p>
+            <div class="attachment-preview" id="editAttachmentPreview" hidden>
+              <span class="attachment-icon" aria-hidden="true"></span>
+              <span class="attachment-name"></span>
+              <button type="button" class="btn btn-ghost attachment-remove" id="removeEditAttachmentBtn">Remover</button>
+            </div>
+          </div>
         </div>
 
         <div class="datetime-grid">
           <div class="form-group">
-            <label class="form-label" for="editDate">Date</label>
+            <label class="form-label" for="editDate">Data</label>
             <input type="date" id="editDate" class="input-box" required>
           </div>
           <div class="form-group">
-            <label class="form-label" for="editTime">Time</label>
+            <label class="form-label" for="editTime">Horário</label>
             <input type="time" id="editTime" class="input-box" required>
           </div>
         </div>
 
         <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
-          Save Changes
+          Salvar alterações
         </button>
       </form>
     </div>
@@ -382,11 +460,11 @@
   <div class="dialog-overlay" id="deleteDialog" role="alertdialog" aria-modal="true"
     aria-labelledby="deleteDialogTitle">
     <div class="dialog-card">
-      <h3 class="dialog-title" id="deleteDialogTitle">Delete this scheduled message?</h3>
-      <p class="dialog-desc">This will remove the scheduled message from the automated sending queue.</p>
+      <h3 class="dialog-title" id="deleteDialogTitle">Excluir esta mensagem agendada?</h3>
+      <p class="dialog-desc">A mensagem será removida da fila de envios automáticos.</p>
       <div class="dialog-actions">
-        <button type="button" class="btn btn-ghost" data-close-sheet>Cancel</button>
-        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+        <button type="button" class="btn btn-ghost" data-close-sheet>Cancelar</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Excluir</button>
       </div>
     </div>
   </div>
@@ -398,8 +476,8 @@
     <div class="sheet-container">
       <div class="sheet-grabber"></div>
       <div class="sheet-header">
-        <h2 class="sheet-title" id="settingsSheetTitle">Settings</h2>
-        <button class="icon-btn" data-close-sheet aria-label="Close">
+        <h2 class="sheet-title" id="settingsSheetTitle">Configurações</h2>
+        <button class="icon-btn" data-close-sheet aria-label="Fechar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -411,46 +489,82 @@
 
         <!-- WhatsApp Account Section -->
         <div class="settings-section">
-          <div class="settings-section-title">WhatsApp Account (Multi-Device)</div>
+          <div class="settings-section-title">Conta do WhatsApp (multidispositivo)</div>
           <div class="settings-list">
             <div class="settings-item">
               <div class="settings-label-group">
-                <span class="settings-item-title" id="settingsWaStatusLabel">Checking status...</span>
-                <span class="settings-item-desc" id="settingsWaStatusSub">Connect to send messages automatically
-                  24/7</span>
+                <span class="settings-item-title" id="settingsWaStatusLabel">Verificando status...</span>
+                <span class="settings-item-desc" id="settingsWaStatusSub">Conecte-se para enviar mensagens automaticamente, 24 horas por dia</span>
               </div>
               <button type="button" class="btn btn-teal" id="settingsManageWaBtn"
                 style="padding: 6px 14px; font-size: 0.8rem;">
-                Manage
+                Gerenciar
               </button>
             </div>
           </div>
         </div>
 
+        <div class="settings-section">
+          <div class="settings-section-title">Respostas automáticas</div>
+          <div class="settings-list">
+            <div class="settings-item">
+              <div class="settings-label-group">
+                <span class="settings-item-title">Responder por palavra ou frase</span>
+                <span class="settings-item-desc">Quando uma mensagem recebida contiver o termo, o app envia a resposta cadastrada.</span>
+              </div>
+              <button type="button" class="btn btn-teal" id="autoRepliesToggleBtn" aria-expanded="false"
+                style="padding: 6px 14px; font-size: 0.8rem;">Configurar</button>
+            </div>
+          </div>
+          <div id="autoRepliesManager" class="auto-replies-manager" hidden>
+            <form id="autoReplyForm" class="auto-reply-form">
+              <div class="form-group">
+                <label class="form-label" for="autoReplyKeyword">Palavra ou frase</label>
+                <input class="input-box" id="autoReplyKeyword" maxlength="100" placeholder="Ex.: oi ou pix" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="autoReplyText">Resposta enviada</label>
+                <textarea class="input-box textarea-box" id="autoReplyText" maxlength="1000" rows="3"
+                  placeholder="Ex.: Olá, tudo bem? (opcional se anexar mídia)"></textarea>
+              </div>
+              <div class="auto-reply-attachment-controls">
+                <button type="button" class="btn btn-ghost" id="autoReplyAttachmentBtn">📎 Anexar áudio, imagem, vídeo ou documento</button>
+                <span id="autoReplyAttachmentName" class="auto-reply-attachment-name">Nenhum arquivo anexado</span>
+                <button type="button" class="auto-reply-rule-delete" id="autoReplyRemoveAttachmentBtn" title="Remover arquivo" aria-label="Remover arquivo" hidden>×</button>
+              </div>
+              <div class="auto-reply-attachment-hint">Até 16 MB. Imagens, vídeos e documentos podem incluir legenda; com áudio, o texto é enviado em seguida.</div>
+              <div class="auto-reply-form-actions">
+                <button type="submit" class="btn btn-primary" id="autoReplySubmitBtn">Adicionar resposta automática</button>
+                <button type="button" class="btn btn-ghost" id="autoReplyCancelEditBtn" hidden>Cancelar edição</button>
+              </div>
+            </form>
+            <p class="auto-replies-note">Correspondência ignora maiúsculas e acentos e considera o termo como palavra/frase inteira. Responde apenas uma vez por mensagem e não responde grupos nem suas próprias mensagens.</p>
+            <div id="autoReplyRulesList" class="auto-reply-rules-list" aria-live="polite"></div>
+          </div>
+        </div>
+
         <!-- Appearance Group -->
         <div class="settings-section">
-          <div class="settings-section-title">Appearance</div>
+          <div class="settings-section-title">Aparência</div>
           <div class="theme-selector-group">
-            <button type="button" class="theme-pill-btn active" data-theme="system">System</button>
-            <button type="button" class="theme-pill-btn" data-theme="light">Light</button>
-            <button type="button" class="theme-pill-btn" data-theme="dark">Dark</button>
+            <button type="button" class="theme-pill-btn active" data-theme="system">Sistema</button>
+            <button type="button" class="theme-pill-btn" data-theme="light">Claro</button>
+            <button type="button" class="theme-pill-btn" data-theme="dark">Escuro</button>
           </div>
         </div>
 
         <!-- About Group -->
         <div class="settings-section">
-          <div class="settings-section-title">About</div>
+          <div class="settings-section-title">Sobre</div>
           <div class="settings-list">
             <div class="settings-item">
-              <span class="settings-item-title">Version</span>
-              <span id="settingsAppVersion" style="font-size: 0.85rem; color: var(--text-secondary); font-family: var(--font-mono);">3.0.0 (Desktop
-                Edition)</span>
+              <span class="settings-item-title">Versão</span>
+              <span id="settingsAppVersion" style="font-size: 0.85rem; color: var(--text-secondary); font-family: var(--font-mono);">3.0.0 (Versão para computador)</span>
             </div>
             <div class="settings-item">
               <div class="settings-label-group">
-                <span class="settings-item-title">Architecture</span>
-                <span class="settings-item-desc">Electron + Baileys Multi-Device + SQLite + Background
-                  Scheduler</span>
+                <span class="settings-item-title">Tecnologias</span>
+                <span class="settings-item-desc">Electron + Baileys multidispositivo + SQLite + agendador em segundo plano</span>
               </div>
             </div>
           </div>

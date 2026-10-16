@@ -6,7 +6,7 @@
 const { Tray, Menu, nativeImage, app } = require('electron');
 const path = require('path');
 const { scheduler } = require('./scheduler');
-const { whatsappClient } = require('./whatsappClient');
+const { whatsappClient } = require('./whatsappWebClient');
 
 let tray = null;
 
@@ -16,7 +16,7 @@ let tray = null;
  */
 function createTray(mainWindow) {
   // Load tray icon
-  const iconPath = path.join(__dirname, '..', 'assets', 'icons', 'tray.png');
+  const iconPath = path.join(__dirname, '..', 'assets', 'icons', 'satirozap-app.ico');
   let trayIcon;
 
   try {
@@ -33,7 +33,7 @@ function createTray(mainWindow) {
   }
 
   tray = new Tray(trayIcon);
-  tray.setToolTip('WhatsApp Scheduler — Running in background');
+  tray.setToolTip('Agendador WhatsApp — Em execução em segundo plano');
 
   // Double-click on tray icon → show/focus window
   tray.on('double-click', () => {
@@ -59,24 +59,24 @@ function updateTrayMenu(mainWindow) {
   const waStatus = whatsappClient.getStatus();
 
   // WhatsApp status label
-  let waLabel = '⚠ WhatsApp: Disconnected';
+  let waLabel = '⚠ WhatsApp: desconectado';
   if (waStatus.status === 'connected') {
     const phone = waStatus.user?.phone ? `+${waStatus.user.phone}` : '';
-    waLabel = `✓ WhatsApp: Connected ${phone}`;
+    waLabel = `✓ WhatsApp: conectado ${phone}`;
   } else if (waStatus.status === 'connecting' || waStatus.status === 'reconnecting') {
-    waLabel = '↻ WhatsApp: Reconnecting...';
+    waLabel = '↻ WhatsApp: reconectando...';
   } else if (waStatus.status === 'qr_ready') {
-    waLabel = '● WhatsApp: Scan QR Code';
+    waLabel = '● WhatsApp: escaneie o código QR';
   }
 
   // Scheduler status label
   let schedulerLabel = schedulerStatus.isPaused
-    ? '⏸ Scheduler: Paused'
-    : '▶ Scheduler: Active';
+    ? '⏸ Agendador: pausado'
+    : '▶ Agendador: ativo';
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Open WhatsApp Scheduler',
+      label: 'Abrir Agendador WhatsApp',
       type: 'normal',
       click: () => {
         if (mainWindow) {
@@ -91,7 +91,7 @@ function updateTrayMenu(mainWindow) {
       enabled: false
     },
     {
-      label: schedulerStatus.isPaused ? 'Resume Scheduler' : 'Pause Scheduler',
+      label: schedulerStatus.isPaused ? 'Retomar agendador' : 'Pausar agendador',
       type: 'normal',
       click: () => {
         if (schedulerStatus.isPaused) {
@@ -110,7 +110,7 @@ function updateTrayMenu(mainWindow) {
     },
     { type: 'separator' },
     {
-      label: 'Quit',
+      label: 'Sair',
       type: 'normal',
       click: () => {
         // Set a flag so the close handler knows to actually quit

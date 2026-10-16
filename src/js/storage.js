@@ -57,6 +57,10 @@ export const Storage = {
     return [...contactsCache];
   },
 
+  setContacts(contacts) {
+    contactsCache = Array.isArray(contacts) ? [...contacts] : [];
+  },
+
   /**
    * Add a real contact to recent contacts list
    */
@@ -64,9 +68,9 @@ export const Storage = {
     if (!contact || !contact.name || !contact.phone) return;
 
     // Update local cache immediately
-    contactsCache = contactsCache.filter(c => c.phone !== contact.phone);
+    const normalizedPhone = contact.phone.replace(/\D/g, '');
+    contactsCache = contactsCache.filter(c => c.phone.replace(/\D/g, '') !== normalizedPhone);
     contactsCache.unshift({ name: contact.name.trim(), phone: contact.phone.trim() });
-    if (contactsCache.length > 20) contactsCache = contactsCache.slice(0, 20);
 
     // Async persist to SQLite
     if (window.api) {

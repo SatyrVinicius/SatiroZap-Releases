@@ -1,0 +1,446 @@
+const fs = require('fs');
+const path = require('path');
+const { WebContentsView, session } = require('electron');
+
+const WHATSAPP_URL = 'https://web.whatsapp.com/';
+const MAX_ATTACHMENT_SIZE = 16 * 1024 * 1024;
+
+class WhatsAppWebClient {
+  constructor() {
+    this.view = null;
+    this.webContents = null;
+    this.mainWindow = null;
+    this.status = 'disconnected';
+    this.userDataPath = null;
+    this.isQuitting = false;
+    this.isVisible = false;
+    this.injectionPromise = null;
+    this.loadRetryTimer = null;
+    this.loadRetryCount = 0;
+    this.pageLoaded = false;
+  }
+
+  setMainWindow(window) {
+    if (this.view && this.webContents && !this.webContents.isDestroyed()
+      && this.mainWindow && this.mainWindow !== window && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.contentView.removeChildView(this.view);
+    }
+    this.mainWindow = window;
+    if (this.view && this.webContents && !this.webContents.isDestroyed()
+      && window && !window.isDestroyed()) window.contentView.addChildView(this.view);
+  }
+
+  async init(userDataPath) {
+    this.userDataPath = userDataPath || this.userDataPath;
+    if (!this.view || !this.webContents || this.webContents.isDestroyed()) this.createView();
+  }
+
+  createView() {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) throw new Error('A janela principal ainda não está pronta.');
+    if (this.view) {
+      try { this.mainWindow.contentView.removeChildView(this.view); } catch {}
+    }
+    const whatsappSession = session.fromPartition('persist:whatsapp-web', { cache: false });
+    this.view = new WebContentsView({
+      webPreferences: {
+        session: whatsappSession,
+        preload: path.join(__dirname, 'whatsapp-web-preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        backgroundThrottling: false,
+        devTools: !require('electron').app.isPackaged
+      }
+    });
+
+    this.mainWindow.contentView.addChildView(this.view);
+    this.view.setVisible(this.isVisible);
+    this.webContents = this.view.webContents;
+    const webContents = this.webContents;
+    webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    const preventExternalNavigation = (event, url) => {
+      try {
+        if (new URL(url).origin !== 'https://web.whatsapp.com') event.preventDefault();
+      } catch {
+        event.preventDefault();
+      }
+    };
+    webContents.on('will-navigate', preventExternalNavigation);
+    webContents.on('will-redirect', preventExternalNavigation);
+    webContents.on('did-finish-load', () => {
+      if (webContents.getURL().startsWith(WHATSAPP_URL)) {
+        this.pageLoaded = true;
+        this.loadRetryCount = 0;
+        if (this.loadRetryTimer) clearTimeout(this.loadRetryTimer);
+        this.loadRetryTimer = null;
+        this.injectAutomation();
+      }
+    });
+    webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (isMainFrame && validatedURL.startsWith(WHATSAPP_URL)) {
+        if (errorCode === -3) return; // ERR_ABORTED during WhatsApp's own navigation.
+        this.pageLoaded = false;
+        console.error(`[WhatsApp Web] Load failed (${errorCode}): ${errorDescription}`);
+        this.setStatus('reconnecting');
+        this.scheduleLoadRetry();
+      }
+    });
+    webContents.on('render-process-gone', (_event, details) => {
+      console.error(`[WhatsApp Web] Renderer stopped (${details.reason}${details.exitCode ? `, exit ${details.exitCode}` : ''}).`);
+      this.setStatus('reconnecting');
+      this.scheduleLoadRetry();
+    });
+
+    const chromiumVersion = webContents.getUserAgent().match(/Chrome\/([\d.]+)/)?.[1];
+    const platform = process.platform === 'win32'
+      ? 'Windows NT 10.0; Win64; x64'
+      : process.platform === 'darwin'
+        ? 'Macintosh; Intel Mac OS X 10_15_7'
+        : 'X11; Linux x86_64';
+    const userAgent = `Mozilla/5.0 (${platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromiumVersion || '120.0.0.0'} Safari/537.36`;
+    webContents.setUserAgent(userAgent);
+    this.setStatus('connecting');
+    const [width, height] = this.mainWindow.getContentSize();
+    this.view.setBounds({ x: 64, y: 0, width: Math.max(1, width - 64), height: Math.max(1, height) });
+    this.loadWhatsAppPage(webContents);
+  }
+
+  loadWhatsAppPage(webContents = this.webContents) {
+    if (!webContents || webContents.isDestroyed()) return;
+    this.pageLoaded = false;
+    console.log('[WhatsApp Web] Loading embedded page…');
+    webContents.loadURL(WHATSAPP_URL).catch((error) => {
+      console.error('[WhatsApp Web] Could not open WhatsApp Web:', error);
+      this.setStatus('reconnecting');
+      this.scheduleLoadRetry();
+    });
+  }
+
+  scheduleLoadRetry() {
+    if (this.loadRetryTimer || this.isQuitting) return;
+    const webContents = this.webContents;
+    if (!webContents || typeof webContents.isDestroyed !== 'function' || webContents.isDestroyed()) {
+      try {
+        this.createView();
+      } catch (error) {
+        console.error('[WhatsApp Web] Could not recreate embedded view:', error);
+      }
+      return;
+    }
+    this.loadRetryCount += 1;
+    const delay = Math.min(30000, 2000 * (2 ** Math.min(this.loadRetryCount - 1, 4)));
+    console.warn(`[WhatsApp Web] Retrying page load in ${Math.round(delay / 1000)}s (attempt ${this.loadRetryCount}).`);
+    this.loadRetryTimer = setTimeout(() => {
+      this.loadRetryTimer = null;
+      const currentWebContents = this.webContents;
+      if (!currentWebContents || currentWebContents.isDestroyed()) {
+        try {
+          this.createView();
+        } catch (error) {
+          console.error('[WhatsApp Web] Could not recreate embedded view:', error);
+        }
+        return;
+      }
+      this.loadWhatsAppPage(currentWebContents);
+    }, delay);
+  }
+
+  async injectAutomation() {
+    if (!this.webContents || this.webContents.isDestroyed() || this.injectionPromise) return this.injectionPromise;
+
+    const webContents = this.webContents;
+    this.injectionPromise = (async () => {
+      try {
+        const bundlePath = require.resolve('@wppconnect/wa-js');
+        const bundle = fs.readFileSync(bundlePath, 'utf8');
+        const bootstrap = fs.readFileSync(path.join(__dirname, 'whatsapp-web-bootstrap.js'), 'utf8');
+        await webContents.executeJavaScript(bundle, true);
+        await webContents.executeJavaScript(bootstrap, true);
+        console.log('[WhatsApp Web] WA-JS bundle and contextual bridge injected.');
+      } catch (error) {
+        console.error('[WhatsApp Web] Automation integration could not be injected:', error);
+        this.setStatus('disconnected');
+      } finally {
+        this.injectionPromise = null;
+      }
+    })();
+
+    return this.injectionPromise;
+  }
+
+  showWindow() {
+    if (!this.view || !this.webContents || this.webContents.isDestroyed()) this.createView();
+    this.isVisible = true;
+    this.view.setVisible(true);
+    if (!this.pageLoaded && !this.webContents.isLoadingMainFrame()) this.loadWhatsAppPage();
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      if (this.mainWindow.isMinimized()) this.mainWindow.restore();
+      this.mainWindow.show();
+      this.mainWindow.focus();
+    }
+    return this.getStatus();
+  }
+
+  isPageLoaded() {
+    return this.pageLoaded;
+  }
+
+  setViewVisible(visible) {
+    this.isVisible = Boolean(visible);
+    if (this.view && this.webContents && !this.webContents.isDestroyed()) this.view.setVisible(Boolean(visible));
+  }
+
+  setViewBounds(bounds) {
+    if (this.view && this.webContents && !this.webContents.isDestroyed()) this.view.setBounds(bounds);
+  }
+
+  isWebContents(webContents) {
+    return Boolean(this.view && this.webContents && !this.webContents.isDestroyed() && this.webContents === webContents);
+  }
+
+  setStatus(status, user = null) {
+    const allowedStatuses = new Set(['disconnected', 'connecting', 'reconnecting', 'qr_ready', 'connected']);
+    if (!allowedStatuses.has(status)) return;
+
+    if (this.status !== status) console.log(`[WhatsApp Web] Connection status: ${status}`);
+    this.status = status;
+    this.user = user && typeof user === 'object' ? {
+      name: typeof user.name === 'string' ? user.name.slice(0, 120) : null,
+      phone: typeof user.phone === 'string' ? user.phone.replace(/\D/g, '').slice(0, 15) : null
+    } : null;
+    this.pushStatusToRenderer();
+  }
+
+  getStatus() {
+    return {
+      status: this.status,
+      qrDataUrl: null,
+      user: this.user,
+      isConnected: this.status === 'connected'
+    };
+  }
+
+  pushStatusToRenderer() {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send('whatsapp:status-update', this.getStatus());
+    }
+  }
+
+  async connect() {
+    const status = this.showWindow();
+    if (status.status === 'disconnected') this.setStatus('connecting');
+    return this.getStatus();
+  }
+
+  async logout() {
+    if (this.webContents && !this.webContents.isDestroyed()) {
+      try {
+        await this.webContents.executeJavaScript(`window.WPP?.conn?.logout?.()`);
+      } catch (error) {
+        console.warn('[WhatsApp Web] Logout request failed:', error);
+      }
+    }
+    this.setStatus('disconnected');
+    return true;
+  }
+
+  async executeInWhatsAppPage(source) {
+    if (!this.view || !this.webContents || this.webContents.isDestroyed() || this.status !== 'connected') {
+      throw new Error('O WhatsApp Web não está conectado. Abra o WhatsApp e conecte sua conta.');
+    }
+    return this.webContents.executeJavaScript(source, true);
+  }
+
+  async syncContacts() {
+    const contacts = await this.executeInWhatsAppPage(`(async () => {
+      if (!window.WPP?.contact?.list) throw new Error('A integração com o WhatsApp ainda está carregando.');
+      const models = await window.WPP.contact.list({ onlyMyContacts: true });
+      return Promise.all(models.map(async (contact) => {
+        let id = contact.id?._serialized || contact.id?.toString?.() || '';
+        let phoneId = id;
+        if (id.endsWith('@lid')) {
+          try {
+            const entry = await window.WPP.contact.getPnLidEntry(id);
+            phoneId = entry?.phoneNumber?._serialized || '';
+          } catch {}
+        }
+        const phone = phoneId.split('@')[0].split(':')[0].replace(/\\D/g, '');
+        return {
+          name: contact.name || contact.shortName || contact.pushname || phone,
+          phone
+        };
+      }));
+    })()`);
+
+    return (contacts || []).filter(contact => /^\d{7,15}$/.test(contact.phone) && contact.name);
+  }
+
+  async sendToActiveChat(quickMessage) {
+    if (!quickMessage || (!quickMessage.message && !quickMessage.attachmentId)) {
+      throw new Error('A mensagem rápida não contém texto nem arquivo.');
+    }
+
+    let attachment = null;
+    if (quickMessage.attachmentId) {
+      if (!/^[0-9a-f-]{36}$/i.test(quickMessage.attachmentId)) throw new Error('Identificador do arquivo inválido.');
+      const extension = path.extname(quickMessage.attachmentName || '').toLowerCase();
+      const attachmentPath = path.join(this.userDataPath, 'attachments', `${quickMessage.attachmentId}${extension}`);
+      const stats = fs.existsSync(attachmentPath) ? fs.statSync(attachmentPath) : null;
+      if (!stats?.isFile()) throw new Error('O arquivo salvo nesta mensagem rápida não foi encontrado.');
+      if (stats.size > MAX_ATTACHMENT_SIZE) throw new Error('O arquivo excede o limite de 16 MB.');
+      if (!['image', 'video', 'audio', 'document'].includes(quickMessage.attachmentKind)) {
+        throw new Error('Tipo de arquivo salvo não compatível.');
+      }
+      attachment = {
+        dataUrl: `data:${quickMessage.attachmentMimeType || 'application/octet-stream'};base64,${fs.readFileSync(attachmentPath).toString('base64')}`,
+        kind: quickMessage.attachmentKind,
+        filename: quickMessage.attachmentName,
+        mimetype: quickMessage.attachmentMimeType || 'application/octet-stream'
+      };
+    }
+
+    const payload = JSON.stringify({ text: quickMessage.message || '', attachment });
+    const result = await this.executeInWhatsAppPage(`(async () => {
+      const saved = ${payload};
+      const chat = await window.WPP.chat.getActiveChat();
+      const chatId = chat?.id?._serialized || chat?.id?.toString?.() || '';
+      if (!chatId || /@(broadcast|newsletter)$/.test(chatId)) throw new Error('Abra uma conversa válida antes de enviar.');
+      if (saved.attachment) {
+        const options = {
+          type: saved.attachment.kind,
+          filename: saved.attachment.filename,
+          mimetype: saved.attachment.mimetype
+        };
+        if (saved.attachment.kind !== 'audio' && saved.text) options.caption = saved.text;
+        await window.WPP.chat.sendFileMessage(chatId, saved.attachment.dataUrl, options);
+        if (saved.attachment.kind === 'audio' && saved.text) await window.WPP.chat.sendTextMessage(chatId, saved.text);
+        return true;
+      }
+      await window.WPP.chat.sendTextMessage(chatId, saved.text);
+      return true;
+    })()`);
+
+    return { success: result === true };
+  }
+
+  async sendAutoReply(chatId, reply, attachment = null) {
+    if (typeof chatId !== 'string' || !/^[\w.-]+@(?:c\.us|s\.whatsapp\.net|lid)$/i.test(chatId)) {
+      throw new Error('Conversa inválida para resposta automática.');
+    }
+    const text = typeof reply === 'string' ? reply.trim().slice(0, 5000) : '';
+    if (!text && !attachment?.attachmentId) throw new Error('A resposta automática está vazia.');
+
+    let media = null;
+    if (attachment?.attachmentId) {
+      if (!/^[0-9a-f-]{36}$/i.test(attachment.attachmentId)) throw new Error('Identificador de mídia inválido.');
+      if (!['audio', 'image', 'video', 'document'].includes(attachment.attachmentKind)) {
+        throw new Error('Tipo de mídia da resposta automática inválido.');
+      }
+      const extension = path.extname(attachment.attachmentName || '').toLowerCase();
+      const filePath = path.join(this.userDataPath, 'attachments', `${attachment.attachmentId}${extension}`);
+      const stats = fs.existsSync(filePath) ? fs.statSync(filePath) : null;
+      if (!stats?.isFile()) throw new Error('O arquivo da resposta automática não foi encontrado.');
+      if (stats.size > MAX_ATTACHMENT_SIZE) throw new Error('O arquivo da resposta automática excede 16 MB.');
+      media = {
+        dataUrl: `data:${attachment.attachmentMimeType || 'application/octet-stream'};base64,${fs.readFileSync(filePath).toString('base64')}`,
+        kind: attachment.attachmentKind,
+        filename: attachment.attachmentName,
+        mimetype: attachment.attachmentMimeType || 'application/octet-stream'
+      };
+    }
+
+    const payload = JSON.stringify({ chatId, text, media });
+    const sent = await this.executeInWhatsAppPage(`(async () => {
+      const reply = ${payload};
+      if (reply.media) {
+        if (!window.WPP?.chat?.sendFileMessage) throw new Error('O envio de arquivos pelo WhatsApp ainda está carregando.');
+        const options = {
+          type: reply.media.kind,
+          filename: reply.media.filename,
+          mimetype: reply.media.mimetype
+        };
+        if (reply.media.kind !== 'audio' && reply.text) options.caption = reply.text;
+        await window.WPP.chat.sendFileMessage(reply.chatId, reply.media.dataUrl, options);
+        if (reply.media.kind === 'audio' && reply.text) {
+          if (!window.WPP?.chat?.sendTextMessage) throw new Error('O envio de texto pelo WhatsApp ainda está carregando.');
+          await window.WPP.chat.sendTextMessage(reply.chatId, reply.text);
+        }
+        return true;
+      }
+      if (!window.WPP?.chat?.sendTextMessage) throw new Error('A integração do WhatsApp ainda está carregando.');
+      await window.WPP.chat.sendTextMessage(reply.chatId, reply.text);
+      return true;
+    })()`);
+    return sent === true;
+  }
+
+  async sendMessage(phone, messageText, attachment = null) {
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    if (!/^\d{7,15}$/.test(cleanPhone)) throw new Error(`Número de telefone inválido: ${phone}`);
+    const jid = `${cleanPhone}@c.us`;
+
+    try {
+      let result;
+      if (attachment?.attachmentId) {
+        if (!/^[0-9a-f-]{36}$/i.test(attachment.attachmentId)) throw new Error('Identificador de anexo inválido.');
+        const extension = path.extname(attachment.attachmentName || '').toLowerCase();
+        const attachmentPath = path.join(this.userDataPath, 'attachments', `${attachment.attachmentId}${extension}`);
+        const fileStats = fs.existsSync(attachmentPath) ? fs.statSync(attachmentPath) : null;
+        if (!fileStats?.isFile()) throw new Error('O arquivo anexado não foi encontrado.');
+        if (fileStats.size > MAX_ATTACHMENT_SIZE) throw new Error('O arquivo anexado excede o limite de 16 MB.');
+
+        const kind = attachment.attachmentKind;
+        if (!['image', 'video', 'audio', 'document'].includes(kind)) throw new Error('Tipo de arquivo não compatível.');
+        const base64 = fs.readFileSync(attachmentPath).toString('base64');
+        const dataUrl = `data:${attachment.attachmentMimeType};base64,${base64}`;
+        const payload = JSON.stringify({ jid, dataUrl, kind, messageText: messageText || '', filename: attachment.attachmentName, mimetype: attachment.attachmentMimeType });
+        result = await this.executeInWhatsAppPage(`(async () => {
+          const a = ${payload};
+          if (!window.WPP?.chat?.sendFileMessage) throw new Error('A integração com o WhatsApp ainda está carregando.');
+          const options = { type: a.kind, filename: a.filename, mimetype: a.mimetype };
+          if (a.kind !== 'audio' && a.messageText) options.caption = a.messageText;
+          const sent = await window.WPP.chat.sendFileMessage(a.jid, a.dataUrl, options);
+          if (a.kind === 'audio' && a.messageText) await window.WPP.chat.sendTextMessage(a.jid, a.messageText);
+          const messageId = sent?.id?._serialized || sent?.id;
+          return typeof messageId === 'string' ? messageId : '';
+        })()`);
+      } else {
+        const payload = JSON.stringify({ jid, text: messageText || '' });
+        result = await this.executeInWhatsAppPage(`(async () => {
+          const a = ${payload};
+          if (!window.WPP?.chat?.sendTextMessage) throw new Error('A integração com o WhatsApp ainda está carregando.');
+          const sent = await window.WPP.chat.sendTextMessage(a.jid, a.text);
+          const messageId = sent?.id?._serialized || sent?.id;
+          return typeof messageId === 'string' ? messageId : '';
+        })()`);
+      }
+
+      return {
+        success: true,
+        messageId: (typeof result === 'string' && result) || `wa_${Date.now()}`,
+        sentAt: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('[WhatsApp Web] Message sending failed:', error);
+      throw new Error(error.message || 'Falha ao enviar mensagem pelo WhatsApp Web.');
+    }
+  }
+
+  async destroy() {
+    this.isQuitting = true;
+    if (this.loadRetryTimer) clearTimeout(this.loadRetryTimer);
+    this.loadRetryTimer = null;
+    if (this.view && this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.contentView.removeChildView(this.view);
+    }
+    if (this.webContents && !this.webContents.isDestroyed()) this.webContents.close();
+    this.view = null;
+    this.webContents = null;
+    this.pageLoaded = false;
+    this.status = 'disconnected';
+  }
+}
+
+const whatsappClient = new WhatsAppWebClient();
+
+module.exports = { whatsappClient };

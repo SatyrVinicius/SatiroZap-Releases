@@ -6,7 +6,7 @@
  */
 
 const database = require('./database');
-const { whatsappClient } = require('./whatsappClient');
+const { whatsappClient } = require('./whatsappWebClient');
 
 class SchedulerService {
   constructor() {
@@ -115,8 +115,8 @@ class SchedulerService {
     this.pushUpdateToRenderer('message-status', { id: msg.id, status: 'SENDING' });
 
     try {
-      // 2. Send via WhatsApp Baileys socket
-      const result = await whatsappClient.sendMessage(msg.recipientPhone, msg.message);
+      // 2. Send through the persistent WhatsApp Web session
+      const result = await whatsappClient.sendMessage(msg.recipientPhone, msg.message, msg);
 
       if (result && result.success) {
         // 3a. Mark as SENT
@@ -132,14 +132,14 @@ class SchedulerService {
 
         // Send native OS notification
         this.sendNativeNotification(
-          'Message Sent ✓',
-          `Message to ${msg.recipientName} was sent successfully.`
+          'Mensagem enviada ✓',
+          `A mensagem para ${msg.recipientName} foi enviada com sucesso.`
         );
       } else {
-        throw new Error('Did not receive positive delivery confirmation from WhatsApp');
+        throw new Error('Não foi possível confirmar o envio pelo WhatsApp.');
       }
     } catch (err) {
-      const errorMsg = err.message || 'WhatsApp sending failed';
+      const errorMsg = err.message || 'Falha ao enviar pelo WhatsApp.';
 
       // 3b. Mark as FAILED
       const updated = database.updateMessage(msg.id, {
@@ -153,8 +153,8 @@ class SchedulerService {
 
       // Send native OS notification for failure
       this.sendNativeNotification(
-        'Message Failed ⚠',
-        `Failed to send message to ${msg.recipientName}: ${errorMsg}`
+        'Falha no envio ⚠',
+        `Não foi possível enviar a mensagem para ${msg.recipientName}: ${errorMsg}`
       );
     }
   }
@@ -165,7 +165,7 @@ class SchedulerService {
   async sendImmediately(messageId) {
     const msg = database.getMessageById(messageId);
     if (!msg) {
-      throw new Error(`Message with ID ${messageId} not found`);
+      throw new Error(`Mensagem com o ID ${messageId} não encontrada.`);
     }
 
     await this.processMessage(msg);

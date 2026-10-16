@@ -1,68 +1,77 @@
-# 📱 WhatsApp Message Scheduler (Desktop Edition)
+# 📱 Agendador de mensagens do WhatsApp (versão para computador)
 
-A standalone Windows desktop application for scheduling and automatically sending WhatsApp messages using the **WhatsApp Multi-Device Protocol (Baileys)**.
+Um aplicativo independente para Windows que agenda e envia mensagens do WhatsApp automaticamente usando uma janela integrada do **WhatsApp Web**.
 
-Unlike basic reminder apps, this application **actually delivers WhatsApp messages automatically** in the background at the exact scheduled date and time without requiring you to click "send" or keep a browser open.
-
----
-
-## ✨ Features
-
-- 🖥️ **Native Desktop App**: Runs as a standalone Windows application.
-- 🤖 **100% Automated**: Scheduled messages are dispatched directly in the background.
-- 📉 **System Tray Support**: Close the window, and the app minimizes to the system tray to keep running 24/7.
-- 💾 **Local SQLite Database**: All scheduled messages, contacts, and settings are saved locally and persist across computer restarts.
-- 📲 **Zero Browser Overhead**: Powered by `@whiskeysockets/baileys` directly in Node.js — no heavy headless browser needed.
-- 🔄 **Auto-Reconnect**: Handles internet drops and automatically reconnects to WhatsApp.
+Ao contrário de aplicativos simples de lembretes, este aplicativo **envia as mensagens do WhatsApp automaticamente** em segundo plano, na data e no horário agendados, sem que você precise clicar em “enviar”. O aplicativo precisa continuar em execução na bandeja e a sessão do WhatsApp Web deve permanecer conectada.
 
 ---
 
-## 🚀 Installation & Usage
+## ✨ Recursos
 
-1. **Download the App:**
-   - Go to the [Releases](../../releases/latest) page on GitHub.
-   - Download the latest `WhatsApp-Scheduler-Setup-x.x.x.exe` file.
-
-2. **Install:**
-   - Double-click the downloaded `.exe` file to install the application.
-   - It will automatically create shortcuts on your Desktop and Start Menu.
-
-3. **Connect WhatsApp:**
-   - Open the app and click the **Settings** icon (gear) in the top right.
-   - Click **Manage** under WhatsApp Account.
-   - Scan the QR code using your WhatsApp mobile app (Linked Devices -> Link a Device).
-
-4. **Schedule a Message:**
-   - Click the **Schedule Message** button at the bottom.
-   - Enter the recipient's phone number and the message text.
-   - Choose the date and time, and click Schedule.
-   - You can safely close the window! The app will minimize to the System Tray and send the message at the exact time in the background.
+- 🖥️ **Aplicativo nativo para computador**: funciona como um aplicativo independente no Windows.
+- 🤖 **Totalmente automatizado**: as mensagens agendadas são enviadas em segundo plano.
+- 📉 **Ícone na bandeja do sistema**: ao fechar a janela, o aplicativo continua em execução na bandeja.
+- 💾 **Banco de dados SQLite local**: mensagens, contatos e configurações são salvos no computador e mantidos após reinicializações.
+- 🪟 **WhatsApp Web integrado**: a sessão fica em uma janela própria dentro do aplicativo e pode ser ocultada sem encerrar o agendador.
+- ⏱️ **Automação contextual**: um botão na conversa aberta permite iniciar um agendamento já preenchido com o contato atual.
+- 💬 **Mensagens rápidas**: salve, edite, exclua e reutilize textos, áudios, vídeos e documentos pelo botão ao lado do agendamento na conversa.
+- 🔄 **Sessão persistente**: o login do WhatsApp Web é salvo localmente; pode ser necessário reconectar após logout ou expiração da sessão.
 
 ---
 
-## 👨‍💻 Development Setup
+## 🚀 Instalação e uso
+
+1. **Baixe o aplicativo:**
+   - Acesse a página de [versões](../../releases/latest) no GitHub.
+   - Baixe o arquivo de instalação mais recente.
+
+2. **Instale:**
+   - Abra o arquivo `.exe` baixado para instalar o aplicativo.
+   - Os atalhos serão criados automaticamente na área de trabalho e no menu Iniciar.
+
+3. **Conecte o WhatsApp:**
+   - Abra o aplicativo e clique no ícone de **Configurações** (engrenagem), no canto superior.
+   - Clique em **Gerenciar**, na seção da conta do WhatsApp.
+   - Clique em **Abrir WhatsApp Web** e faça login na janela integrada. Se um QR aparecer, escaneie pelo celular em **Dispositivos conectados → Conectar dispositivo**.
+
+4. **Agende uma mensagem:**
+   - Clique no botão **Agendar mensagem**, na parte inferior.
+   - Selecione o contato e escreva a mensagem. Se quiser, anexe uma imagem, vídeo, áudio, documento ou outro arquivo de até 16 MB.
+   - Imagens, vídeos e documentos podem usar o texto como legenda; para áudios, o texto é enviado em uma mensagem separada.
+   - Escolha a data e o horário e confirme o agendamento.
+   - Você pode fechar a janela: o aplicativo continuará na bandeja do sistema e enviará a mensagem no horário programado.
+   - Como atalho, abra uma conversa individual no WhatsApp Web e use o botão de automação ao lado do controle de áudio para abrir o formulário com o destinatário preenchido.
+   - Use o botão de mensagens rápidas ao lado do agendamento para enviar imediatamente um texto ou arquivo salvo à conversa aberta; cadastre, edite ou exclua mensagens e anexos pelo próprio menu. Arquivos têm limite de 16 MB.
+
+---
+
+## 👨‍💻 Configuração para desenvolvimento
 
 If you want to run the app from source or contribute to the project:
 
 ```bash
-# Install dependencies
+# Instalar as dependências
 npm install
 
-# Start the application in development mode
+# Iniciar o aplicativo em modo de desenvolvimento
 npm start
 
-# Build the Windows Installer (.exe)
+# Gerar o instalador do Windows (.exe)
 npm run build
 ```
 
 ---
 
-## 🛠️ Architecture
+## 🛠️ Arquitetura
 
-- **Frontend**: Vanilla JS, CSS Variables, IPC Renderer calls.
-- **Backend**: Electron Main Process.
-- **Database**: `sql.js` (SQLite compiled to WASM — zero native dependencies).
-- **WhatsApp**: `@whiskeysockets/baileys` Multi-Device library.
+- **Interface**: JavaScript sem framework, variáveis CSS e comunicação IPC com o Electron.
+- **Backend**: processo principal do Electron.
+- **Banco de dados**: `sql.js` (SQLite compilado para WebAssembly, sem dependências nativas).
+- **WhatsApp**: janela persistente do WhatsApp Web, integrada com `@wppconnect/wa-js` para automações e envio de mensagens.
 
-## 📝 License
-MIT License
+## ⚠️ Compatibilidade
+
+A integração usa uma biblioteca comunitária não oficial e depende das interfaces internas do WhatsApp Web. Atualizações do WhatsApp podem interromper temporariamente o botão contextual ou o envio até que a biblioteca seja compatibilizada. O agendador só envia enquanto o aplicativo está em execução e a conta permanece conectada; grupos e conversas sem número de telefone resolvido não podem ser pré-preenchidos como contatos individuais.
+
+## 📝 Licença
+Licença MIT

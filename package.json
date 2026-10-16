@@ -2,7 +2,7 @@
   "name": "whatsapp-message-scheduler",
   "private": true,
   "version": "3.0.0",
-  "description": "Desktop application for scheduling WhatsApp messages with automatic sending",
+  "description": "Aplicativo para computador para agendar e enviar mensagens do WhatsApp automaticamente",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
@@ -11,10 +11,11 @@
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.20",
-    "sql.js": "^1.14.2",
+    "@wppconnect/wa-js": "^4.7.1",
     "pino": "^9.6.0",
     "pngjs": "^7.0.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "sql.js": "^1.14.2"
   },
   "devDependencies": {
     "electron": "^44.1.0",
@@ -22,17 +23,17 @@
   },
   "build": {
     "appId": "com.whatsapp.scheduler",
-    "productName": "WhatsApp Scheduler",
+    "productName": "SátiroZap",
     "directories": {
       "output": "build_out"
     },
     "compression": "store",
-    "artifactName": "WhatsApp-Scheduler-Setup-${version}.${ext}",
+    "artifactName": "SatiroZap-Setup-${version}.${ext}",
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": "assets/icons/icon.png"
+      "icon": "assets/icons/satirozap-app.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -44,6 +45,7 @@
       "electron/**/*",
       "src/**/*",
       "index.html",
+      "access.html",
       "assets/**/*",
       "public/**/*",
       "!node_modules/**/*.md",

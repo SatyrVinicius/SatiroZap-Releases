@@ -24,6 +24,7 @@ class AppState {
     this.listeners = new Set();
     this.pollInterval = null;
     this.ipcCleanup = [];
+    this.pendingAutomationContact = null;
   }
 
   async init() {
@@ -65,6 +66,18 @@ class AppState {
       });
       this.ipcCleanup.push(unsub);
     }
+
+    if (window.api.onAutomationContact) {
+      const unsub = window.api.onAutomationContact((contact) => {
+        this.pendingAutomationContact = contact;
+        this.notify();
+      });
+      this.ipcCleanup.push(unsub);
+    }
+
+    window.api.automationRendererReady?.().catch((error) => {
+      console.warn('Automation renderer handshake failed:', error);
+    });
   }
 
   startPolling() {
@@ -88,6 +101,8 @@ class AppState {
         API.getWhatsAppStatus()
       ]);
 
+      const whatsappStatusChanged = this.whatsapp.status !== waStatus.status
+        || this.whatsapp.isConnected !== waStatus.isConnected;
       this.messages = messages;
       this.whatsapp = waStatus;
 
@@ -97,7 +112,7 @@ class AppState {
         if (updated) this.selectedMessage = updated;
       }
 
-      if (notifyNow) this.notify();
+      if (notifyNow || whatsappStatusChanged) this.notify();
     } catch (err) {
       console.warn('State refresh error:', err);
     }

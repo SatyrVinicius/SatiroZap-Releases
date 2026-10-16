@@ -87,13 +87,13 @@ export function formatDateLabel(dateTimeStr) {
   const diffDays = Math.round((targetDate - today) / (1000 * 60 * 60 * 24));
 
   if (diffDays === 0) {
-    return 'Today';
+    return 'Hoje';
   } else if (diffDays === 1) {
-    return 'Tomorrow';
+    return 'Amanhã';
   } else if (diffDays === -1) {
-    return 'Yesterday';
+    return 'Ontem';
   } else {
-    return date.toLocaleDateString(undefined, {
+    return date.toLocaleDateString('pt-BR', {
       weekday: 'short',
       month: 'short',
       day: 'numeric'
@@ -107,7 +107,7 @@ export function formatDateLabel(dateTimeStr) {
 export function formatFullDate(dateTimeStr) {
   const date = new Date(dateTimeStr);
   if (isNaN(date.getTime())) return '';
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString('pt-BR', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
@@ -121,10 +121,10 @@ export function formatFullDate(dateTimeStr) {
 export function formatTimeLabel(dateTimeStr) {
   const date = new Date(dateTimeStr);
   if (isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString(undefined, {
+  return date.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
-    hour12: true
+    hour12: false
   });
 }
 
@@ -137,7 +137,7 @@ export function formatRelativeCountdown(dateTimeStr) {
   const diffSec = Math.round((target - now) / 1000);
 
   if (Math.abs(diffSec) <= 60) {
-    return 'Due right now';
+    return 'Agora';
   }
 
   if (diffSec > 0) {
@@ -146,21 +146,21 @@ export function formatRelativeCountdown(dateTimeStr) {
     const days = Math.floor(hours / 24);
 
     if (days > 0) {
-      return `In ${days} day${days > 1 ? 's' : ''}${hours % 24 > 0 ? ` ${hours % 24}h` : ''}`;
+      return `Em ${days} dia${days !== 1 ? 's' : ''}${hours % 24 > 0 ? ` e ${hours % 24}h` : ''}`;
     }
     if (hours > 0) {
-      return `In ${hours} hour${hours > 1 ? 's' : ''}${minutes % 60 > 0 ? ` ${minutes % 60}m` : ''}`;
+      return `Em ${hours} hora${hours !== 1 ? 's' : ''}${minutes % 60 > 0 ? ` e ${minutes % 60} min` : ''}`;
     }
-    return `In ${minutes} minute${minutes > 1 ? 's' : ''}`;
+    return `Em ${minutes} minuto${minutes !== 1 ? 's' : ''}`;
   } else {
     const pastSec = Math.abs(diffSec);
     const minutes = Math.floor(pastSec / 60);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
-    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    return `${minutes} min${minutes > 1 ? 's' : ''} ago`;
+    if (days > 0) return `Há ${days} dia${days !== 1 ? 's' : ''}`;
+    if (hours > 0) return `Há ${hours} hora${hours !== 1 ? 's' : ''}`;
+    return `Há ${minutes} min`;
   }
 }
 

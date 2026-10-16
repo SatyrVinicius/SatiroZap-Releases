@@ -111,7 +111,7 @@ class WhatsAppManager {
           
           const rawId = this.sock.user?.id || '';
           const phone = rawId.split(':')[0] || rawId.split('@')[0];
-          const name = this.sock.user?.name || 'WhatsApp Account';
+          const name = this.sock.user?.name || 'Conta do WhatsApp';
 
           this.user = { phone, name };
           console.log(`[WhatsApp] Successfully connected as ${name} (+${phone})`);
@@ -140,12 +140,12 @@ class WhatsAppManager {
    */
   async sendMessage(phone, messageText) {
     if (this.status !== 'connected' || !this.sock) {
-      throw new Error('WhatsApp is not connected. Please scan the QR code to link your account.');
+      throw new Error('O WhatsApp não está conectado. Escaneie o código QR para vincular sua conta.');
     }
 
     const cleanPhone = phone.replace(/[^\d]/g, '');
     if (!cleanPhone || cleanPhone.length < 7) {
-      throw new Error(`Invalid phone number: ${phone}`);
+      throw new Error(`Número de telefone inválido: ${phone}`);
     }
 
     const jid = `${cleanPhone}@s.whatsapp.net`;
@@ -167,7 +167,7 @@ class WhatsAppManager {
       };
     } catch (err) {
       console.error(`[WhatsApp] Failed to send message to ${cleanPhone}:`, err);
-      throw new Error(err.message || 'Failed to send WhatsApp message');
+      throw new Error(err.message || 'Falha ao enviar mensagem pelo WhatsApp.');
     }
   }
 

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acesso ao SátiroZap</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #0c1317; color: #e9edef; font: 14px "Segoe UI", sans-serif; }
+    main { width: min(100%, 380px); padding: 28px; border: 1px solid #263238; border-radius: 16px; background: #111b21; box-shadow: 0 18px 48px #0006; }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    p { color: #aebac1; line-height: 1.5; }
+    label { display: block; margin: 20px 0 7px; font-weight: 600; }
+    input { width: 100%; padding: 12px; border: 1px solid #3b4a52; border-radius: 8px; outline: none; background: #202c33; color: #e9edef; font: inherit; }
+    input:focus { border-color: #00a884; }
+    button { width: 100%; margin-top: 14px; padding: 12px; border: 0; border-radius: 8px; background: #00a884; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    button.secondary { border: 1px solid #3b4a52; background: transparent; color: #e9edef; }
+    #status { min-height: 22px; margin: 12px 0 0; color: #ffb4ab; font-size: 13px; }
+    #exitButton[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>SátiroZap</h1>
+    <p>Informe a senha de acesso. Após a primeira validação, ela será salva de forma protegida neste computador e consultada automaticamente nas próximas aberturas.</p>
+    <form id="accessForm">
+      <label for="password">Senha</label>
+      <input id="password" name="password" type="password" maxlength="256" autocomplete="current-password" required autofocus>
+      <button id="submitButton" type="submit">Verificar acesso</button>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p>
+    <button id="exitButton" class="secondary" type="button" hidden>Fechar aplicativo</button>
+  </main>
+  <script src="./src/js/access.js"></script>
+</body>
+</html>

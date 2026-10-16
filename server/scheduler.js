@@ -78,10 +78,10 @@ class ServerScheduler {
         });
         console.log(`[Scheduler] Confirmed: Message ${msg.id} successfully sent at ${result.sentAt}`);
       } else {
-        throw new Error('Did not receive positive delivery confirmation from WhatsApp');
+        throw new Error('Não foi possível confirmar o envio pelo WhatsApp.');
       }
     } catch (err) {
-      const errorMsg = err.message || 'WhatsApp sending failed';
+      const errorMsg = err.message || 'Falha ao enviar pelo WhatsApp.';
       
       Database.updateMessage(msg.id, {
         status: 'FAILED',
@@ -96,7 +96,7 @@ class ServerScheduler {
   async sendImmediately(messageId) {
     const msg = Database.getMessageById(messageId);
     if (!msg) {
-      throw new Error(`Message with ID ${messageId} not found`);
+      throw new Error(`Mensagem com o ID ${messageId} não encontrada.`);
     }
 
     await this.processMessage(msg);

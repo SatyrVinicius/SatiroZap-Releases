@@ -41,7 +41,7 @@ function createTables() {
   db.run(`
     CREATE TABLE IF NOT EXISTS messages (
       id TEXT PRIMARY KEY,
-      recipientName TEXT NOT NULL DEFAULT 'Contact',
+      recipientName TEXT NOT NULL DEFAULT 'Contato',
       recipientPhone TEXT NOT NULL,
       message TEXT NOT NULL,
       scheduledDateTime TEXT NOT NULL,
@@ -70,6 +70,68 @@ function createTables() {
       value TEXT
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS quick_messages (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL DEFAULT '',
+      attachmentId TEXT,
+      attachmentName TEXT,
+      attachmentMimeType TEXT,
+      attachmentKind TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS auto_reply_rules (
+      id TEXT PRIMARY KEY,
+      keyword TEXT NOT NULL,
+      reply TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS auto_reply_processed (
+      messageId TEXT PRIMARY KEY,
+      processedAt TEXT NOT NULL
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS auto_reply_paused_chats (
+      chatId TEXT PRIMARY KEY,
+      pausedAt TEXT NOT NULL
+    )
+  `);
+
+  const quickMessageColumns = new Set(
+    (db.exec('PRAGMA table_info(quick_messages)')[0]?.values || []).map(column => column[1])
+  );
+  ['attachmentId', 'attachmentName', 'attachmentMimeType', 'attachmentKind'].forEach(column => {
+    if (!quickMessageColumns.has(column)) db.run(`ALTER TABLE quick_messages ADD COLUMN ${column} TEXT`);
+  });
+
+  const messageColumns = new Set(
+    (db.exec('PRAGMA table_info(messages)')[0]?.values || []).map(column => column[1])
+  );
+  ['attachmentId', 'attachmentName', 'attachmentMimeType', 'attachmentKind'].forEach(column => {
+    if (!messageColumns.has(column)) {
+      db.run(`ALTER TABLE messages ADD COLUMN ${column} TEXT`);
+    }
+  });
+
+  const autoReplyColumns = new Set(
+    (db.exec('PRAGMA table_info(auto_reply_rules)')[0]?.values || []).map(column => column[1])
+  );
+  ['attachmentId', 'attachmentName', 'attachmentMimeType', 'attachmentKind'].forEach(column => {
+    if (!autoReplyColumns.has(column)) db.run(`ALTER TABLE auto_reply_rules ADD COLUMN ${column} TEXT`);
+  });
 }
 
 /**
@@ -165,7 +227,7 @@ function saveMessage(message) {
 
   const record = {
     id,
-    recipientName: (message.recipientName || 'Contact').trim(),
+    recipientName: (message.recipientName || 'Contato').trim(),
     recipientPhone: (message.recipientPhone || '').trim(),
     message: (message.message || '').trim(),
     scheduledDateTime: message.scheduledDateTime,
@@ -174,17 +236,22 @@ function saveMessage(message) {
     failedAt: null,
     errorReason: null,
     whatsappMessageId: null,
+    attachmentId: message.attachmentId || null,
+    attachmentName: message.attachmentName || null,
+    attachmentMimeType: message.attachmentMimeType || null,
+    attachmentKind: message.attachmentKind || null,
     createdAt: message.createdAt || now,
     updatedAt: now
   };
 
   runAndPersist(
-    `INSERT INTO messages (id, recipientName, recipientPhone, message, scheduledDateTime, status, sentAt, failedAt, errorReason, whatsappMessageId, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO messages (id, recipientName, recipientPhone, message, scheduledDateTime, status, sentAt, failedAt, errorReason, whatsappMessageId, attachmentId, attachmentName, attachmentMimeType, attachmentKind, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [record.id, record.recipientName, record.recipientPhone,
      record.message, record.scheduledDateTime, record.status,
      record.sentAt, record.failedAt, record.errorReason,
-     record.whatsappMessageId, record.createdAt, record.updatedAt]
+     record.whatsappMessageId, record.attachmentId, record.attachmentName,
+     record.attachmentMimeType, record.attachmentKind, record.createdAt, record.updatedAt]
   );
 
   return record;
@@ -206,11 +273,13 @@ function updateMessage(id, updates) {
       recipientName = ?, recipientPhone = ?, message = ?,
       scheduledDateTime = ?, status = ?, sentAt = ?,
       failedAt = ?, errorReason = ?, whatsappMessageId = ?,
+      attachmentId = ?, attachmentName = ?, attachmentMimeType = ?, attachmentKind = ?,
       updatedAt = ?
     WHERE id = ?`,
     [merged.recipientName, merged.recipientPhone, merged.message,
      merged.scheduledDateTime, merged.status, merged.sentAt,
      merged.failedAt, merged.errorReason, merged.whatsappMessageId,
+    merged.attachmentId, merged.attachmentName, merged.attachmentMimeType, merged.attachmentKind,
      merged.updatedAt, id]
   );
 
@@ -227,7 +296,7 @@ function deleteMessage(id) {
 // ============================================================
 
 function getContacts() {
-  return queryAll('SELECT * FROM contacts ORDER BY lastUsedAt DESC LIMIT 30');
+  return queryAll('SELECT * FROM contacts ORDER BY lastUsedAt DESC');
 }
 
 function addContact(contact) {
@@ -246,6 +315,55 @@ function addContact(contact) {
   }
 
   return { name: contact.name.trim(), phone: contact.phone.trim(), lastUsedAt: now };
+}
+
+function importContacts(contacts) {
+  if (!Array.isArray(contacts)) return { imported: 0, updated: 0, skipped: 0 };
+
+  const existingContacts = queryAll('SELECT id, name, phone FROM contacts');
+  const contactsByPhone = new Map(
+    existingContacts.map(contact => [String(contact.phone).replace(/\D/g, ''), contact])
+  );
+  const seenPhones = new Set();
+  const now = new Date().toISOString();
+  let imported = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  db.run('BEGIN TRANSACTION');
+  try {
+    for (const contact of contacts) {
+      const name = typeof contact?.name === 'string' ? contact.name.trim() : '';
+      const phone = typeof contact?.phone === 'string' ? contact.phone.replace(/\D/g, '') : '';
+      if (!name || !/^\d{7,15}$/.test(phone) || seenPhones.has(phone)) {
+        skipped++;
+        continue;
+      }
+      seenPhones.add(phone);
+
+      const existing = contactsByPhone.get(phone);
+      if (existing) {
+        if (existing.name !== name) {
+          db.run('UPDATE contacts SET name = ? WHERE id = ?', [name, existing.id]);
+          existing.name = name;
+          updated++;
+        } else {
+          skipped++;
+        }
+      } else {
+        db.run('INSERT INTO contacts (name, phone, lastUsedAt) VALUES (?, ?, ?)', [name, phone, now]);
+        contactsByPhone.set(phone, { name, phone, lastUsedAt: now });
+        imported++;
+      }
+    }
+    db.run('COMMIT');
+  } catch (error) {
+    db.run('ROLLBACK');
+    throw error;
+  }
+
+  if (imported || updated) persist();
+  return { imported, updated, skipped };
 }
 
 // ============================================================
@@ -277,6 +395,96 @@ function updateSettings(updates) {
   return getSettings();
 }
 
+function getQuickMessages() {
+  return queryAll('SELECT id, title, message, attachmentId, attachmentName, attachmentMimeType, attachmentKind, createdAt, updatedAt FROM quick_messages ORDER BY updatedAt DESC');
+}
+
+function getQuickMessageById(id) {
+  return queryOne('SELECT id, title, message, attachmentId, attachmentName, attachmentMimeType, attachmentKind, createdAt, updatedAt FROM quick_messages WHERE id = ?', [id]);
+}
+
+function saveQuickMessage({ id, title, message, attachmentId = null, attachmentName = null, attachmentMimeType = null, attachmentKind = null }) {
+  const now = new Date().toISOString();
+  const quickMessageId = id || `quick_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const existing = queryOne('SELECT id FROM quick_messages WHERE id = ?', [quickMessageId]);
+
+  if (existing) {
+    runAndPersist('UPDATE quick_messages SET title = ?, message = ?, attachmentId = ?, attachmentName = ?, attachmentMimeType = ?, attachmentKind = ?, updatedAt = ? WHERE id = ?',
+      [title, message, attachmentId, attachmentName, attachmentMimeType, attachmentKind, now, quickMessageId]);
+  } else {
+    runAndPersist('INSERT INTO quick_messages (id, title, message, attachmentId, attachmentName, attachmentMimeType, attachmentKind, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [quickMessageId, title, message, attachmentId, attachmentName, attachmentMimeType, attachmentKind, now, now]);
+  }
+
+  return getQuickMessageById(quickMessageId);
+}
+
+function deleteQuickMessage(id) {
+  runAndPersist('DELETE FROM quick_messages WHERE id = ?', [id]);
+  return true;
+}
+
+function getAutoReplyRules() {
+  return queryAll('SELECT id, keyword, reply, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled, createdAt, updatedAt FROM auto_reply_rules ORDER BY updatedAt DESC');
+}
+
+function saveAutoReplyRule({ id, keyword, reply, attachmentId = null, attachmentName = null, attachmentMimeType = null, attachmentKind = null, enabled = true }) {
+  const now = new Date().toISOString();
+  const ruleId = id || `reply_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const existing = queryOne('SELECT id FROM auto_reply_rules WHERE id = ?', [ruleId]);
+  if (existing) {
+    runAndPersist('UPDATE auto_reply_rules SET keyword = ?, reply = ?, attachmentId = ?, attachmentName = ?, attachmentMimeType = ?, attachmentKind = ?, enabled = ?, updatedAt = ? WHERE id = ?',
+      [keyword, reply, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled ? 1 : 0, now, ruleId]);
+  } else {
+    runAndPersist('INSERT INTO auto_reply_rules (id, keyword, reply, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [ruleId, keyword, reply, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled ? 1 : 0, now, now]);
+  }
+  return queryOne('SELECT id, keyword, reply, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled, createdAt, updatedAt FROM auto_reply_rules WHERE id = ?', [ruleId]);
+}
+
+function setAutoReplyRuleEnabled(id, enabled) {
+  runAndPersist('UPDATE auto_reply_rules SET enabled = ?, updatedAt = ? WHERE id = ?',
+    [enabled ? 1 : 0, new Date().toISOString(), id]);
+  return queryOne('SELECT id, keyword, reply, enabled, createdAt, updatedAt FROM auto_reply_rules WHERE id = ?', [id]);
+}
+
+function deleteAutoReplyRule(id) {
+  runAndPersist('DELETE FROM auto_reply_rules WHERE id = ?', [id]);
+  return true;
+}
+
+function isAutoReplyPausedForChat(chatId) {
+  return Boolean(queryOne('SELECT chatId FROM auto_reply_paused_chats WHERE chatId = ?', [chatId]));
+}
+
+function setAutoReplyPausedForChat(chatId, paused) {
+  if (paused) {
+    runAndPersist('INSERT OR REPLACE INTO auto_reply_paused_chats (chatId, pausedAt) VALUES (?, ?) ',
+      [chatId, new Date().toISOString()]);
+  } else {
+    runAndPersist('DELETE FROM auto_reply_paused_chats WHERE chatId = ?', [chatId]);
+  }
+  return isAutoReplyPausedForChat(chatId);
+}
+
+function claimAutoReplyMessage(messageId) {
+  const stmt = db.prepare('INSERT OR IGNORE INTO auto_reply_processed (messageId, processedAt) VALUES (?, ?)');
+  stmt.run([messageId, new Date().toISOString()]);
+  stmt.free();
+  const changes = db.exec('SELECT changes()')[0]?.values?.[0]?.[0] || 0;
+  if (changes) {
+    db.run(`DELETE FROM auto_reply_processed WHERE messageId IN (
+      SELECT messageId FROM auto_reply_processed ORDER BY processedAt DESC LIMIT -1 OFFSET 1000
+    )`);
+    persist();
+  }
+  return changes > 0;
+}
+
+function releaseAutoReplyMessage(messageId) {
+  runAndPersist('DELETE FROM auto_reply_processed WHERE messageId = ?', [messageId]);
+}
+
 /**
  * Close the database gracefully
  */
@@ -299,6 +507,19 @@ module.exports = {
   deleteMessage,
   getContacts,
   addContact,
+  importContacts,
   getSettings,
-  updateSettings
+  updateSettings,
+  getQuickMessages,
+  getQuickMessageById,
+  saveQuickMessage,
+  deleteQuickMessage,
+  getAutoReplyRules,
+  saveAutoReplyRule,
+  setAutoReplyRuleEnabled,
+  deleteAutoReplyRule,
+  isAutoReplyPausedForChat,
+  setAutoReplyPausedForChat,
+  claimAutoReplyMessage,
+  releaseAutoReplyMessage
 };

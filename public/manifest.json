@@ -1,7 +1,7 @@
 {
-  "name": "WhatsApp Scheduler",
-  "short_name": "WA Scheduler",
-  "description": "Schedule WhatsApp messages locally with reminders and one-tap sending.",
+  "name": "Agendador de mensagens do WhatsApp",
+  "short_name": "Agendador WA",
+  "description": "Agende mensagens do WhatsApp e envie-as automaticamente no horário escolhido.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0B141A",

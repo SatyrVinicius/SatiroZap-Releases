@@ -2,14 +2,294 @@
 
 /* Main Container - Desktop Window */
 .app-viewport {
-  width: 100%;
-  max-width: var(--app-max-width);
+  width: calc(100% - 64px);
+  max-width: none;
+  margin-left: 64px;
   min-height: 100vh;
   background-color: var(--bg-app);
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
+}
+
+.app-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 50;
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 0 8px 12px;
+  background: #111b21;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.app-sidebar-spacer {
+  display: none;
+}
+
+.app-sidebar-top-logo {
+  width: 48px;
+  height: auto;
+  flex: 0 0 auto;
+  margin-top: 8px;
+  object-fit: contain;
+}
+
+.app-sidebar-logo {
+  width: 34px;
+  height: 45px;
+  flex: 0 0 45px;
+  margin-top: auto;
+  object-fit: contain;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.app-sidebar-button {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #aebac1;
+  transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.app-sidebar-button:hover,
+.app-sidebar-button:focus-visible {
+  color: #fff;
+  background: #202c33;
+}
+
+.app-sidebar-button:active {
+  transform: scale(0.94);
+}
+
+.app-sidebar-button.active {
+  color: #25d366;
+  background: rgba(37, 211, 102, 0.14);
+  box-shadow: inset 3px 0 #25d366;
+}
+
+.app-sidebar-button.app-sidebar-google.active {
+  color: #fff;
+  box-shadow: inset 3px 0 #4285f4;
+}
+
+.browser-chrome {
+  display: none;
+  position: fixed;
+  inset: 0 0 auto 64px;
+  z-index: 40;
+  height: 112px;
+  flex-direction: column;
+  color: #e9edef;
+  background: #202124;
+  border-bottom: 1px solid #3c4043;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.browser-page-active .browser-chrome {
+  display: flex;
+}
+
+body.browser-page-active .app-viewport {
+  visibility: hidden;
+}
+
+.browser-tabs-row {
+  height: 42px;
+  min-height: 42px;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 5px 10px 0;
+  background: #17181a;
+}
+
+.browser-tabs {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.browser-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.browser-tab {
+  min-width: 100px;
+  max-width: 220px;
+  flex: 0 1 190px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px 0 11px;
+  border-radius: 9px 9px 0 0;
+  background: #242529;
+  color: #bdc1c6;
+}
+
+.browser-tab.active {
+  background: #303134;
+  color: #f1f3f4;
+}
+
+.browser-tab-select {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.browser-tab-close,
+.browser-new-tab {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #bdc1c6;
+  font-size: 18px;
+}
+
+.browser-tab-close:hover,
+.browser-new-tab:hover {
+  background: #45464a;
+  color: #fff;
+}
+
+.browser-new-tab {
+  margin: 2px 0 4px;
+  font-size: 22px;
+}
+
+.browser-chrome-toggle {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #9aa0a6;
+  font-size: 17px;
+  line-height: 1;
+  opacity: 0.72;
+  transition: background-color var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.browser-chrome-toggle:hover,
+.browser-chrome-toggle:focus-visible {
+  color: #e8eaed;
+  background: #3c4043;
+  opacity: 1;
+}
+
+.browser-toolbar {
+  height: 70px;
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 14px;
+}
+
+.browser-nav-button {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 50%;
+  color: #e8eaed;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.browser-nav-button:disabled {
+  color: #686b70;
+  cursor: default;
+}
+
+.browser-nav-button:not(:disabled):hover {
+  background: #3c4043;
+}
+
+.browser-reload {
+  font-size: 22px;
+}
+
+.browser-address-icon {
+  margin-left: 5px;
+  color: #9aa0a6;
+  font-size: 22px;
+}
+
+.browser-address {
+  height: 40px;
+  min-width: 0;
+  flex: 1;
+  padding: 0 14px;
+  border: 1px solid #5f6368;
+  border-radius: 22px;
+  background: #303134;
+  color: #e8eaed;
+  font-size: 13px;
+}
+
+.browser-address:focus {
+  border-color: #8ab4f8;
+  background: #202124;
+}
+
+.browser-address::placeholder {
+  color: #9aa0a6;
+}
+
+.browser-go-button {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 17px;
+  background: #8ab4f8;
+  color: #202124;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+body.browser-chrome-collapsed .browser-chrome {
+  height: 40px;
+}
+
+body.browser-chrome-collapsed .browser-tabs-row {
+  height: 40px;
+  min-height: 40px;
+  padding: 0 8px;
+  justify-content: center;
+  background: rgba(23, 24, 26, 0.88);
+}
+
+body.browser-chrome-collapsed .browser-tabs,
+body.browser-chrome-collapsed .browser-new-tab,
+body.browser-chrome-collapsed .browser-toolbar {
+  display: none;
+}
+
+body.browser-chrome-collapsed .browser-chrome-toggle {
+  margin: 0 auto;
+  transform: rotate(180deg);
 }
 
 /* Header */
@@ -87,6 +367,13 @@
   transform: scale(0.95);
 }
 
+#headerSettingsBtn + .icon-btn[data-embedded-page="whatsapp"] {
+  display: flex;
+  flex: 0 0 40px;
+  visibility: visible;
+  opacity: 1;
+}
+
 /* Main Content Area */
 .app-content {
   flex: 1;
@@ -126,10 +413,10 @@
 .bottom-cta-bar {
   position: fixed;
   bottom: 0;
-  left: 0;
+  left: 64px;
   right: 0;
-  width: 100%;
-  max-width: var(--app-max-width);
+  width: calc(100% - 64px);
+  max-width: none;
   padding: 14px 16px calc(14px + var(--bottom-safe-area));
   background: linear-gradient(to top, var(--bg-app) 75%, transparent 100%);
   z-index: 30;

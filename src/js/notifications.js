@@ -96,8 +96,8 @@ export const NotificationService = {
     // 2. Fire System Web Notification if permitted
     if ('Notification' in window && Notification.permission === 'granted') {
       try {
-        const title = `📱 WhatsApp Message`;
-        const body = `Time to send your scheduled message to ${message.recipientName}.\n"${message.message.substring(0, 60)}${message.message.length > 60 ? '...' : ''}"`;
+        const title = `📱 Mensagem do WhatsApp`;
+        const body = `Hora de enviar sua mensagem agendada para ${message.recipientName}.\n"${message.message.substring(0, 60)}${message.message.length > 60 ? '...' : ''}"`;
         
         const notification = new Notification(title, {
           body: body,
@@ -136,7 +136,7 @@ export const NotificationService = {
     const actionBtn = banner.querySelector('.banner-action-btn');
     const closeBtn = banner.querySelector('.banner-close');
 
-    if (titleEl) titleEl.textContent = `Time to send message to ${message.recipientName}`;
+    if (titleEl) titleEl.textContent = `Hora de enviar mensagem para ${message.recipientName}`;
     if (msgEl) msgEl.textContent = `"${message.message}"`;
 
     if (actionBtn) {

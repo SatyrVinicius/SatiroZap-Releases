@@ -82,7 +82,7 @@ export const Database = {
 
     const newRecord = {
       id: message.id || 'msg_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6),
-      recipientName: (message.recipientName || 'Contact').trim(),
+      recipientName: (message.recipientName || 'Contato').trim(),
       recipientPhone: (message.recipientPhone || '').trim(),
       message: (message.message || '').trim(),
       scheduledDateTime: message.scheduledDateTime,
