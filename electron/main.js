@@ -146,6 +146,33 @@ async function querySupabaseAccess(password) {
   }
 }
 
+async function querySupabasePasswordUsage(password) {
+  const endpoint = new URL(SUPABASE_ACCESS_URL);
+  endpoint.searchParams.set('select', 'usado');
+  endpoint.searchParams.set('senha', `eq.${password}`);
+  endpoint.searchParams.set('limit', '2');
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Accept: 'application/json'
+      },
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`Supabase respondeu com HTTP ${response.status}.`);
+    const rows = await response.json();
+    if (!Array.isArray(rows) || rows.length !== 1 || typeof rows[0]?.usado !== 'boolean') return null;
+    return rows[0].usado;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function showStartupAccessGate() {
   return new Promise((resolve) => {
     let finished = false;
@@ -196,6 +223,19 @@ function showStartupAccessGate() {
       try {
         const result = await querySupabaseAccess(password);
         if (result === 'active') {
+          const passwordInUse = await querySupabasePasswordUsage(password);
+          if (passwordInUse === true) {
+            return {
+              status: 'denied',
+              message: 'Esta senha já está sendo usada por outro usuário, por isso não é possível prosseguir.'
+            };
+          }
+          if (passwordInUse !== false) {
+            return {
+              status: 'error',
+              message: 'Não foi possível verificar se esta senha está em uso. Feche o aplicativo e tente novamente.'
+            };
+          }
           saveAccessPassword(password);
           finish(true);
           accessWindow.close();
