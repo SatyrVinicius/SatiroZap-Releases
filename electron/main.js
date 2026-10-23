@@ -4,10 +4,11 @@
  * starts WhatsApp client, scheduler, and system tray.
  */
 
-const { app, BrowserWindow, WebContentsView, session, ipcMain, nativeImage, dialog, shell, safeStorage } = require('electron');
+const { app, BrowserWindow, WebContentsView, session, ipcMain, nativeImage, dialog, shell, safeStorage, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { Readable } = require('stream');
 const database = require('./database');
 const { whatsappClient } = require('./whatsappWebClient');
 const { scheduler } = require('./scheduler');
@@ -25,7 +26,12 @@ let attachmentsDirectory = null;
 const pendingAttachments = new Map();
 let pendingAutomationContact = null;
 let mainRendererReady = false;
-const MAX_ATTACHMENT_SIZE = 16 * 1024 * 1024;
+const MAX_MEDIA_ATTACHMENT_SIZE = 16 * 1024 * 1024;
+const MAX_DOCUMENT_ATTACHMENT_SIZE = 2 * 1024 * 1024 * 1024;
+protocol.registerSchemesAsPrivileged([{
+  scheme: 'wpp-attachment',
+  privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true }
+}]);
 const SUPABASE_ACCESS_URL = 'https://xugflpfnsmecxglzervw.supabase.co/rest/v1/SATIROZAP';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1Z2ZscGZuc21lY3hnbHplcnZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2NTg1NzgsImV4cCI6MjA4MTIzNDU3OH0.Ax_yRhkE5-OKATqoxier57GGI2WHjmHWobKAQygdivc';
 const ACCESS_CREDENTIAL_FILE = 'satirozap-access.bin';
@@ -630,6 +636,79 @@ function getAttachmentPath(attachmentId, attachmentName) {
   return path.join(attachmentsDirectory, `${attachmentId}${extension}`);
 }
 
+function getMaxAttachmentSize(kind) {
+  return kind === 'document' ? MAX_DOCUMENT_ATTACHMENT_SIZE : MAX_MEDIA_ATTACHMENT_SIZE;
+}
+
+function getAttachmentSizeLimitMessage(kind) {
+  return kind === 'document'
+    ? 'Documentos podem ter no máximo 2 GB; imagens, áudios e vídeos, 16 MB.'
+    : 'Imagens, áudios e vídeos podem ter no máximo 16 MB.';
+}
+
+function registerAttachmentProtocol() {
+  const whatsappSession = session.fromPartition('persist:whatsapp-web', { cache: false });
+  whatsappSession.protocol.handle('wpp-attachment', (request) => {
+    const origin = request.headers.get('origin') || '';
+    const corsHeaders = new Headers({
+      'Access-Control-Allow-Origin': 'https://web.whatsapp.com',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Private-Network': 'true',
+      'Cross-Origin-Resource-Policy': 'cross-origin',
+      'Cache-Control': 'no-store'
+    });
+
+    if (origin && origin !== 'https://web.whatsapp.com') return new Response('Forbidden', { status: 403 });
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
+    if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405, headers: corsHeaders });
+
+    let attachmentId;
+    try {
+      attachmentId = new URL(request.url).hostname;
+    } catch {
+      return new Response('Not Found', { status: 404, headers: corsHeaders });
+    }
+    if (!/^[0-9a-f-]{36}$/i.test(attachmentId)) return new Response('Not Found', { status: 404, headers: corsHeaders });
+
+    const metadata = [
+      ...pendingAttachments.values(),
+      ...database.getMessages(),
+      ...database.getQuickMessages(),
+      ...database.getAutoReplyRules()
+    ].find(item => item.attachmentId === attachmentId);
+    if (!metadata || metadata.attachmentKind !== 'document') {
+      return new Response('Not Found', { status: 404, headers: corsHeaders });
+    }
+
+    try {
+      const filePath = getAttachmentPath(attachmentId, metadata.attachmentName);
+      const stats = fs.statSync(filePath);
+      if (!stats.isFile() || stats.size > MAX_DOCUMENT_ATTACHMENT_SIZE) {
+        return new Response('Not Found', { status: 404, headers: corsHeaders });
+      }
+      corsHeaders.set('Content-Type', metadata.attachmentMimeType || 'application/octet-stream');
+      corsHeaders.set('Content-Length', String(stats.size));
+      corsHeaders.set('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(metadata.attachmentName || 'documento')}`);
+      return new Response(Readable.toWeb(fs.createReadStream(filePath)), { status: 200, headers: corsHeaders });
+    } catch (error) {
+      console.error('[Attachments] Could not stream document to WhatsApp Web:', error.message);
+      return new Response('Not Found', { status: 404, headers: corsHeaders });
+    }
+  });
+  whatsappSession.webRequest.onBeforeRequest({
+    urls: ['https://web.whatsapp.com/__wppautom_attachment/*']
+  }, (details, callback) => {
+    let attachmentId = '';
+    try {
+      attachmentId = new URL(details.url).pathname.split('/')[2] || '';
+    } catch {}
+    callback(/^[0-9a-f-]{36}$/i.test(attachmentId)
+      ? { redirectURL: `wpp-attachment://${attachmentId}` }
+      : { cancel: true });
+  });
+}
+
 function removeAttachmentFile(attachmentId, attachmentName) {
   if (!attachmentId || !attachmentsDirectory) return;
 
@@ -666,8 +745,8 @@ function getAttachmentMetadata(attachmentId, existingMessage = null) {
   if (mediaType.kind !== metadata.attachmentKind || mediaType.mimeType !== metadata.attachmentMimeType) {
     throw new Error('Os dados do arquivo anexado são inválidos. Selecione-o novamente.');
   }
-  if (fs.statSync(filePath).size > MAX_ATTACHMENT_SIZE) {
-    throw new Error('O arquivo deve ter no máximo 16 MB.');
+  if (fs.statSync(filePath).size > getMaxAttachmentSize(mediaType.kind)) {
+    throw new Error(getAttachmentSizeLimitMessage(mediaType.kind));
   }
 
   return {
@@ -703,13 +782,28 @@ async function handleIncomingWhatsAppMessage(event, payload) {
   const messageId = payload.messageId.trim().slice(0, 200);
   const chatId = payload.chatId.trim().slice(0, 120);
   const messageText = typeof payload.text === 'string' ? payload.text.trim().slice(0, 5000) : '';
-  if (!messageId || !messageText || !/^[\w.-]+@(?:c\.us|s\.whatsapp\.net|lid)$/i.test(chatId)) return;
+  if (!messageId || !/^[\w.-]+@(?:c\.us|s\.whatsapp\.net|lid)$/i.test(chatId)) return;
   if (database.isAutoReplyPausedForChat(chatId)) return;
-  if (database.getAutoReplyRules().every(rule => Number(rule.enabled) !== 1)) return;
+  const enabledRules = database.getAutoReplyRules().filter(rule => Number(rule.enabled) === 1);
+  if (enabledRules.length === 0) return;
 
-  const rule = findAutoReplyRule(messageText);
-  if (!rule || !database.claimAutoReplyMessage(messageId)) return;
+  const singleRule = enabledRules.find(candidate => candidate.mode === 'single');
+  const keywordRule = findAutoReplyRule(messageText);
+  if ((!singleRule && !keywordRule) || !database.claimAutoReplyMessage(messageId)) return;
+
+  let rule = keywordRule;
+  let cooldownClaim = null;
   try {
+    if (singleRule) {
+      cooldownClaim = database.claimAutoReplyCooldown(
+        singleRule.id,
+        chatId,
+        Number(singleRule.cooldownHours || 24) * 60 * 60 * 1000
+      );
+      if (cooldownClaim) rule = singleRule;
+    }
+    if (!rule) return;
+
     const attachment = rule.attachmentId ? {
       attachmentId: rule.attachmentId,
       attachmentName: rule.attachmentName,
@@ -718,8 +812,9 @@ async function handleIncomingWhatsAppMessage(event, payload) {
     } : null;
     const sent = await whatsappClient.sendAutoReply(chatId, rule.reply, attachment);
     if (!sent) throw new Error('O WhatsApp não confirmou o envio da resposta automática.');
-    console.log(`[AutoReply] Replied to ${chatId} for keyword "${rule.keyword}".`);
+    console.log(`[AutoReply] Replied to ${chatId} using ${rule.mode === 'single' ? 'single-response rule' : `keyword "${rule.keyword}"`}.`);
   } catch (error) {
+    if (cooldownClaim) database.releaseAutoReplyCooldown(rule.id, chatId, cooldownClaim);
     database.releaseAutoReplyMessage(messageId);
     console.error('[AutoReply] Could not send automatic reply:', error.message);
   }
@@ -932,12 +1027,14 @@ function registerIpcHandlers() {
 
     const fileStats = fs.statSync(sourcePath);
     if (!fileStats.isFile()) throw new Error('Selecione um arquivo válido.');
-    if (fileStats.size > MAX_ATTACHMENT_SIZE) throw new Error('O arquivo deve ter no máximo 16 MB.');
+    if (fileStats.size > getMaxAttachmentSize(mediaType.kind)) {
+      throw new Error(getAttachmentSizeLimitMessage(mediaType.kind));
+    }
 
     const attachmentId = crypto.randomUUID();
     const attachmentName = path.basename(sourcePath);
     const destinationPath = getAttachmentPath(attachmentId, attachmentName);
-    fs.copyFileSync(sourcePath, destinationPath);
+    await fs.promises.copyFile(sourcePath, destinationPath);
 
     const metadata = {
       attachmentId,
@@ -1134,14 +1231,24 @@ function registerIpcHandlers() {
     if (data.id && !id) throw new Error('Identificador da regra inválido.');
     const existing = id ? database.getAutoReplyRules().find(rule => rule.id === id) : null;
     if (id && !existing) throw new Error('Resposta automática não encontrada.');
-    const keyword = typeof data.keyword === 'string' ? data.keyword.trim().slice(0, 100) : '';
+    const mode = typeof data.mode === 'string' ? data.mode : (existing?.mode || 'keyword');
+    if (!['keyword', 'single'].includes(mode)) throw new Error('Tipo de resposta automática inválido.');
+    const rules = database.getAutoReplyRules();
+    if (mode === 'single' && rules.some(rule => rule.mode === 'single' && rule.id !== id)) {
+      throw new Error('Já existe uma Resposta única cadastrada. Edite a regra existente para alterar a mensagem ou o intervalo.');
+    }
+    const keyword = mode === 'single' ? '' : (typeof data.keyword === 'string' ? data.keyword.trim().slice(0, 100) : '');
     const reply = typeof data.reply === 'string' ? data.reply.trim().slice(0, 1000) : '';
+    const cooldownHours = data.cooldownHours === undefined ? Number(existing?.cooldownHours || 24) : Number(data.cooldownHours);
     const attachmentId = data.attachmentId === undefined ? existing?.attachmentId : data.attachmentId;
     const attachment = getAttachmentMetadata(attachmentId, existing);
-    if (!keyword) throw new Error('Digite uma palavra ou frase para identificar.');
+    if (mode === 'keyword' && !keyword) throw new Error('Digite uma palavra ou frase para identificar.');
+    if (!Number.isInteger(cooldownHours) || cooldownHours < 1 || cooldownHours > 720) {
+      throw new Error('O intervalo deve ser de 1 a 720 horas.');
+    }
     if (!reply && !attachment.attachmentId) throw new Error('Digite uma resposta ou anexe um arquivo.');
-    if (database.getAutoReplyRules().length >= 100 && !id) throw new Error('Você pode cadastrar até 100 regras.');
-    const saved = database.saveAutoReplyRule({ id, keyword, reply, ...attachment, enabled: existing ? Number(existing.enabled) === 1 : true });
+    if (rules.length >= 100 && !id) throw new Error('Você pode cadastrar até 100 regras.');
+    const saved = database.saveAutoReplyRule({ id, keyword, reply, mode, cooldownHours, ...attachment, enabled: existing ? Number(existing.enabled) === 1 : true });
     if (attachment.attachmentId) pendingAttachments.delete(attachment.attachmentId);
     if (existing?.attachmentId && existing.attachmentId !== attachment.attachmentId) {
       removeAttachmentIfUnused(existing.attachmentId, existing.attachmentName);
@@ -1186,11 +1293,13 @@ function registerIpcHandlers() {
     const mediaType = getAttachmentType(extension);
     const stats = fs.statSync(sourcePath);
     if (!stats.isFile()) throw new Error('Selecione um arquivo válido.');
-    if (stats.size > MAX_ATTACHMENT_SIZE) throw new Error('O arquivo deve ter no máximo 16 MB.');
+    if (stats.size > getMaxAttachmentSize(mediaType.kind)) {
+      throw new Error(getAttachmentSizeLimitMessage(mediaType.kind));
+    }
 
     const attachmentId = crypto.randomUUID();
     const attachmentName = path.basename(sourcePath);
-    fs.copyFileSync(sourcePath, getAttachmentPath(attachmentId, attachmentName));
+    await fs.promises.copyFile(sourcePath, getAttachmentPath(attachmentId, attachmentName));
     const metadata = {
       attachmentId,
       attachmentName,
@@ -1303,6 +1412,7 @@ app.whenReady().then(async () => {
   await database.init(app.getPath('userData'));
   attachmentsDirectory = path.join(app.getPath('userData'), 'attachments');
   fs.mkdirSync(attachmentsDirectory, { recursive: true });
+  registerAttachmentProtocol();
   removeOrphanedAttachments();
   console.log(`[App] Database initialized at ${app.getPath('userData')}`);
 

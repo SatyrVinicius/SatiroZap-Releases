@@ -737,7 +737,8 @@ export const UI = {
       toggle.className = 'auto-reply-rule-toggle';
       toggle.type = 'checkbox';
       toggle.checked = Number(rule.enabled) === 1;
-      toggle.setAttribute('aria-label', `${toggle.checked ? 'Desativar' : 'Ativar'} resposta para ${rule.keyword}`);
+      const ruleLabel = rule.mode === 'single' ? 'Resposta única' : `resposta para ${rule.keyword}`;
+      toggle.setAttribute('aria-label', `${toggle.checked ? 'Desativar' : 'Ativar'} ${ruleLabel}`);
       toggle.addEventListener('change', async () => {
         toggle.disabled = true;
         try {
@@ -755,7 +756,9 @@ export const UI = {
       content.className = 'auto-reply-rule-content';
       const keyword = document.createElement('span');
       keyword.className = 'auto-reply-rule-keyword';
-      keyword.textContent = `Se receber: ${rule.keyword}`;
+      keyword.textContent = rule.mode === 'single'
+        ? `Resposta única · intervalo de ${rule.cooldownHours || 24}h por contato`
+        : `Se receber: ${rule.keyword}`;
       const reply = document.createElement('span');
       reply.className = 'auto-reply-rule-text';
       const mediaLabel = ({ audio: 'áudio', image: 'imagem', video: 'vídeo', document: 'documento' })[rule.attachmentKind] || 'arquivo';
@@ -768,7 +771,7 @@ export const UI = {
       edit.type = 'button';
       edit.textContent = '✎';
       edit.title = 'Editar resposta automática';
-      edit.setAttribute('aria-label', `Editar resposta automática para ${rule.keyword}`);
+      edit.setAttribute('aria-label', `Editar ${ruleLabel}`);
       edit.addEventListener('click', () => this.editAutoReplyRule(rule));
 
       const remove = document.createElement('button');
@@ -776,9 +779,9 @@ export const UI = {
       remove.type = 'button';
       remove.textContent = '×';
       remove.title = 'Excluir resposta automática';
-      remove.setAttribute('aria-label', `Excluir resposta automática para ${rule.keyword}`);
+      remove.setAttribute('aria-label', `Excluir ${ruleLabel}`);
       remove.addEventListener('click', async () => {
-        if (!window.confirm(`Excluir a resposta automática para “${rule.keyword}”?`)) return;
+        if (!window.confirm(`Excluir ${ruleLabel}?`)) return;
         remove.disabled = true;
         try {
           await API.deleteAutoReplyRule(rule.id);
@@ -804,6 +807,18 @@ export const UI = {
     if (remove) remove.hidden = !this.autoReplyAttachment;
   },
 
+  updateAutoReplyModeFields() {
+    const mode = document.getElementById('autoReplyMode')?.value || 'keyword';
+    const keywordGroup = document.getElementById('autoReplyKeywordGroup');
+    const keywordInput = document.getElementById('autoReplyKeyword');
+    const cooldownGroup = document.getElementById('autoReplyCooldownGroup');
+    const cooldownInput = document.getElementById('autoReplyCooldownHours');
+    if (keywordGroup) keywordGroup.hidden = mode === 'single';
+    if (keywordInput) keywordInput.required = mode === 'keyword';
+    if (cooldownGroup) cooldownGroup.hidden = mode !== 'single';
+    if (cooldownInput) cooldownInput.required = mode === 'single';
+  },
+
   async editAutoReplyRule(rule) {
     if (this.autoReplyAttachmentIsPending && this.autoReplyAttachment?.attachmentId) {
       await API.discardAttachment(this.autoReplyAttachment.attachmentId);
@@ -816,8 +831,11 @@ export const UI = {
       attachmentMimeType: rule.attachmentMimeType,
       attachmentKind: rule.attachmentKind
     } : null;
+    document.getElementById('autoReplyMode').value = rule.mode === 'single' ? 'single' : 'keyword';
     document.getElementById('autoReplyKeyword').value = rule.keyword || '';
+    document.getElementById('autoReplyCooldownHours').value = String(rule.cooldownHours || 24);
     document.getElementById('autoReplyText').value = rule.reply || '';
+    this.updateAutoReplyModeFields();
     document.getElementById('autoReplySubmitBtn').textContent = 'Salvar alterações';
     document.getElementById('autoReplyCancelEditBtn').hidden = false;
     this.updateAutoReplyAttachmentPreview();
@@ -836,6 +854,7 @@ export const UI = {
     if (submit) submit.textContent = 'Adicionar resposta automática';
     const cancel = document.getElementById('autoReplyCancelEditBtn');
     if (cancel) cancel.hidden = true;
+    this.updateAutoReplyModeFields();
     this.updateAutoReplyAttachmentPreview();
   },
 
@@ -973,6 +992,9 @@ export const UI = {
       if (willOpen) await this.loadAutoReplyRules();
     });
 
+    document.getElementById('autoReplyMode')?.addEventListener('change', () => this.updateAutoReplyModeFields());
+    this.updateAutoReplyModeFields();
+
     document.getElementById('autoReplyAttachmentBtn')?.addEventListener('click', async (event) => {
       const button = event.currentTarget;
       button.disabled = true;
@@ -1009,14 +1031,18 @@ export const UI = {
       event.preventDefault();
       const form = event.currentTarget;
       const submit = form.querySelector('[type="submit"]');
+      const mode = document.getElementById('autoReplyMode')?.value || 'keyword';
       const keyword = document.getElementById('autoReplyKeyword')?.value || '';
       const reply = document.getElementById('autoReplyText')?.value || '';
+      const cooldownHours = Number(document.getElementById('autoReplyCooldownHours')?.value || 24);
       submit.disabled = true;
       try {
         await API.saveAutoReplyRule({
           id: this.editingAutoReplyId,
+          mode,
           keyword,
           reply,
+          cooldownHours,
           attachmentId: this.autoReplyAttachment?.attachmentId || null
         });
         this.autoReplyAttachmentIsPending = false;

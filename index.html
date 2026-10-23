@@ -189,7 +189,7 @@
           </div>
           <div class="attachment-picker">
             <button type="button" class="btn btn-secondary attachment-button" id="createAttachmentBtn">📎 Anexar arquivo</button>
-            <p class="attachment-hint">Imagens, vídeos, áudios e documentos até 16 MB. O texto será legenda quando compatível; para áudios, será enviado em outra mensagem.</p>
+            <p class="attachment-hint">Documentos até 2 GB; imagens, vídeos e áudios até 16 MB. O texto será legenda quando compatível; para áudios, será enviado em outra mensagem.</p>
             <div class="attachment-preview" id="createAttachmentPreview" hidden>
               <span class="attachment-icon" aria-hidden="true"></span>
               <span class="attachment-name"></span>
@@ -420,7 +420,7 @@
           <textarea id="editMessageText" class="input-box textarea-box" rows="3"></textarea>
           <div class="attachment-picker">
             <button type="button" class="btn btn-secondary attachment-button" id="editAttachmentBtn">📎 Anexar arquivo</button>
-            <p class="attachment-hint">Imagens, vídeos, áudios e documentos até 16 MB. O texto será legenda quando compatível; para áudios, será enviado em outra mensagem.</p>
+            <p class="attachment-hint">Documentos até 2 GB; imagens, vídeos e áudios até 16 MB. O texto será legenda quando compatível; para áudios, será enviado em outra mensagem.</p>
             <div class="attachment-preview" id="editAttachmentPreview" hidden>
               <span class="attachment-icon" aria-hidden="true"></span>
               <span class="attachment-name"></span>
@@ -512,8 +512,20 @@
           <div id="autoRepliesManager" class="auto-replies-manager" hidden>
             <form id="autoReplyForm" class="auto-reply-form">
               <div class="form-group">
+                <label class="form-label" for="autoReplyMode">Tipo de resposta</label>
+                <select class="input-box" id="autoReplyMode">
+                  <option value="keyword">Por palavra ou frase</option>
+                  <option value="single">Resposta única por contato</option>
+                </select>
+              </div>
+              <div class="form-group" id="autoReplyKeywordGroup">
                 <label class="form-label" for="autoReplyKeyword">Palavra ou frase</label>
                 <input class="input-box" id="autoReplyKeyword" maxlength="100" placeholder="Ex.: oi ou pix" required>
+              </div>
+              <div class="form-group" id="autoReplyCooldownGroup" hidden>
+                <label class="form-label" for="autoReplyCooldownHours">Intervalo por contato (horas)</label>
+                <input class="input-box" id="autoReplyCooldownHours" type="number" min="1" max="720" step="1" value="24">
+                <span class="auto-reply-attachment-hint">A resposta será enviada novamente para esse contato somente depois desse intervalo.</span>
               </div>
               <div class="form-group">
                 <label class="form-label" for="autoReplyText">Resposta enviada</label>
@@ -525,13 +537,13 @@
                 <span id="autoReplyAttachmentName" class="auto-reply-attachment-name">Nenhum arquivo anexado</span>
                 <button type="button" class="auto-reply-rule-delete" id="autoReplyRemoveAttachmentBtn" title="Remover arquivo" aria-label="Remover arquivo" hidden>×</button>
               </div>
-              <div class="auto-reply-attachment-hint">Até 16 MB. Imagens, vídeos e documentos podem incluir legenda; com áudio, o texto é enviado em seguida.</div>
+              <div class="auto-reply-attachment-hint">Documentos até 2 GB; imagens, vídeos e áudios até 16 MB. Imagens e vídeos podem incluir legenda; com áudio, o texto é enviado em seguida.</div>
               <div class="auto-reply-form-actions">
                 <button type="submit" class="btn btn-primary" id="autoReplySubmitBtn">Adicionar resposta automática</button>
                 <button type="button" class="btn btn-ghost" id="autoReplyCancelEditBtn" hidden>Cancelar edição</button>
               </div>
             </form>
-            <p class="auto-replies-note">Correspondência ignora maiúsculas e acentos e considera o termo como palavra/frase inteira. Responde apenas uma vez por mensagem e não responde grupos nem suas próprias mensagens.</p>
+            <p class="auto-replies-note">Respostas por palavra ignoram maiúsculas e acentos e consideram o termo como palavra/frase inteira. Resposta única é enviada na primeira mensagem recebida do contato e respeita o intervalo configurado. Não responde grupos nem suas próprias mensagens.</p>
             <div id="autoReplyRulesList" class="auto-reply-rules-list" aria-live="polite"></div>
           </div>
         </div>
