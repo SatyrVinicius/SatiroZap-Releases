@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('whatsappBridge', Object.freeze({
   autoReplies: Object.freeze({
     chatStatus: (chatId) => ipcRenderer.invoke('whatsapp-web:auto-reply-chat-status', chatId),
     setChatPaused: (chatId, paused) => ipcRenderer.invoke('whatsapp-web:auto-reply-chat-pause', chatId, paused),
+    resetSingleCooldown: (chatId) => ipcRenderer.invoke('whatsapp-web:auto-reply-reset-single-cooldown', chatId),
     openSettings: () => ipcRenderer.invoke('whatsapp-web:auto-reply-open-settings')
   }),
   quickMessages: Object.freeze({

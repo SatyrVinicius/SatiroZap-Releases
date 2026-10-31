@@ -5,6 +5,7 @@
   const bridge = window.whatsappBridge;
   let statusTimer = null;
   let autoReplyListenerInstalled = false;
+  let autoReplyRetryTimer = null;
 
   const reportStatus = () => {
     if (!window.WPP || !bridge) return;
@@ -28,22 +29,35 @@
   };
 
   const installAutoReplyListener = () => {
-    if (autoReplyListenerInstalled || !window.WPP?.on || !bridge) return;
-    autoReplyListenerInstalled = true;
-    window.WPP.on('chat.new_message', (message) => {
-      try {
-        const id = message?.id;
-        const chatId = id?.remote?._serialized || id?.remote?.toString?.() || '';
-        const messageId = id?._serialized || id?.toString?.() || '';
-        const fromMe = id?.fromMe;
-        const text = String(message?.body || message?.caption || '').trim();
-        if (message?.isNewMsg !== true || fromMe !== false || !messageId || !chatId) return;
-        if (/@(g\.us|newsletter|broadcast|status)$/i.test(chatId)) return;
-        bridge.incomingMessage({ messageId, chatId, fromMe, text });
-      } catch (error) {
-        console.warn('[wppAutom] Could not process incoming message event:', error);
-      }
-    });
+    if (autoReplyListenerInstalled) return true;
+    const wpp = window.WPP;
+    const loader = wpp?.loader;
+    const fullyReady = wpp?.isFullReady === true || loader?.isFullReady === true;
+    if (!fullyReady || typeof wpp?.on !== 'function' || !bridge) return false;
+    try {
+      wpp.on('chat.new_message', (message) => {
+        try {
+          const id = message?.id;
+          const chatId = id?.remote?._serialized || id?.remote?.toString?.() || '';
+          const messageId = id?._serialized || id?.toString?.() || '';
+          const fromMe = id?.fromMe;
+          const text = String(message?.body || message?.caption || '').trim();
+          if (fromMe !== false || !messageId || !chatId) return;
+          if (/@(g\.us|newsletter|broadcast|status)$/i.test(chatId)) return;
+          bridge.incomingMessage({ messageId, chatId, fromMe, text });
+        } catch (error) {
+          console.warn('[wppAutom] Could not process incoming message event:', error);
+        }
+      });
+      autoReplyListenerInstalled = true;
+      if (autoReplyRetryTimer) clearInterval(autoReplyRetryTimer);
+      autoReplyRetryTimer = null;
+      console.info('[wppAutom] Automatic-reply message listener installed.');
+      return true;
+    } catch (error) {
+      console.warn('[wppAutom] Could not install automatic-reply message listener:', error);
+      return false;
+    }
   };
 
   const phoneFromId = (id) => {
@@ -392,9 +406,16 @@
     action.textContent = 'Carregando…';
     content.appendChild(action);
 
+    const resetSingleCooldown = document.createElement('button');
+    resetSingleCooldown.type = 'button';
+    resetSingleCooldown.hidden = true;
+    resetSingleCooldown.style.cssText = 'width:100%;margin-top:8px;padding:10px;border:1px solid #3b4a52;border-radius:7px;background:#202c33;color:#e9edef;font-weight:bold;cursor:pointer;';
+    resetSingleCooldown.textContent = 'Liberar resposta única agora';
+    content.appendChild(resetSingleCooldown);
+
     const help = document.createElement('div');
     help.style.cssText = 'margin-top:10px;color:#8696a0;font-size:11px;';
-    help.textContent = 'A pausa afeta somente esta conversa; as demais continuam respondendo.';
+    help.textContent = 'Palavras e frases nunca são limitadas pelo intervalo. A resposta única tem intervalo por conversa; use o botão para liberá-la agora. A pausa afeta somente esta conversa.';
     content.appendChild(help);
 
     try {
@@ -402,6 +423,7 @@
       const state = await api.chatStatus(chat.chatId);
       const paused = Boolean(state?.paused);
       const enabledRules = Number(state?.enabledRules) || 0;
+      resetSingleCooldown.hidden = !state?.hasSingleRule;
       statusText.textContent = paused
         ? 'Pausadas somente nesta conversa.'
         : enabledRules > 0
@@ -423,6 +445,19 @@
           action.textContent = paused ? 'Retomar nesta conversa' : 'Pausar nesta conversa';
         }
       });
+      resetSingleCooldown.addEventListener('click', async () => {
+        resetSingleCooldown.disabled = true;
+        resetSingleCooldown.textContent = 'Liberando…';
+        try {
+          await api.resetSingleCooldown(chat.chatId);
+          statusText.textContent = 'Resposta única liberada para esta conversa; ela poderá ser enviada na próxima mensagem recebida.';
+          resetSingleCooldown.textContent = 'Resposta única liberada';
+        } catch (error) {
+          statusText.textContent = error.message || 'Não foi possível liberar a resposta única.';
+          resetSingleCooldown.textContent = 'Liberar resposta única agora';
+          resetSingleCooldown.disabled = false;
+        }
+      });
     } catch (error) {
       statusText.textContent = error.message || 'Não foi possível carregar o estado das respostas automáticas.';
       action.remove();
@@ -438,7 +473,7 @@
     menu.style.width = 'min(340px,calc(100vw - 24px))';
     const rect = button.getBoundingClientRect();
     menu.style.left = `${Math.max(12, Math.min(rect.left - 292, window.innerWidth - 352))}px`;
-    menu.style.top = `${Math.max(12, Math.min(rect.top - 12, window.innerHeight - 360))}px`;
+    menu.style.top = `${Math.max(12, Math.min(rect.top - 12, window.innerHeight - 430))}px`;
     menu.addEventListener('click', event => event.stopPropagation());
     document.body.appendChild(menu);
     try {
@@ -531,11 +566,13 @@
   };
 
   const start = async () => {
-    for (let attempt = 0; attempt < 120 && !window.WPP?.conn?.isAuthenticated; attempt++) {
+    for (let attempt = 0; attempt < 120 && window.WPP?.isFullReady !== true; attempt++) {
       await new Promise(resolve => setTimeout(resolve, 250));
     }
     bridge?.ready(Boolean(window.WPP?.conn?.isAuthenticated?.()));
-    installAutoReplyListener();
+    if (!installAutoReplyListener() && !autoReplyRetryTimer) {
+      autoReplyRetryTimer = setInterval(installAutoReplyListener, 1000);
+    }
     installButton();
     reportStatus();
     if (statusTimer) clearInterval(statusTimer);

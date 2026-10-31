@@ -487,6 +487,12 @@ function releaseAutoReplyCooldown(ruleId, chatId, claimedAt) {
     [ruleId, chatId, claimedAt]);
 }
 
+function resetSingleAutoReplyCooldown(chatId) {
+  runAndPersist(`DELETE FROM auto_reply_cooldowns
+    WHERE chatId = ? AND ruleId IN (SELECT id FROM auto_reply_rules WHERE mode = 'single')`, [chatId]);
+  return true;
+}
+
 function isAutoReplyPausedForChat(chatId) {
   return Boolean(queryOne('SELECT chatId FROM auto_reply_paused_chats WHERE chatId = ?', [chatId]));
 }
@@ -554,6 +560,7 @@ module.exports = {
   deleteAutoReplyRule,
   claimAutoReplyCooldown,
   releaseAutoReplyCooldown,
+  resetSingleAutoReplyCooldown,
   isAutoReplyPausedForChat,
   setAutoReplyPausedForChat,
   claimAutoReplyMessage,

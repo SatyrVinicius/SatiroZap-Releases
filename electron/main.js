@@ -789,35 +789,49 @@ async function handleIncomingWhatsAppMessage(event, payload) {
 
   const singleRule = enabledRules.find(candidate => candidate.mode === 'single');
   const keywordRule = findAutoReplyRule(messageText);
-  if ((!singleRule && !keywordRule) || !database.claimAutoReplyMessage(messageId)) return;
+  if (!singleRule && !keywordRule) return;
+  if (!database.claimAutoReplyMessage(messageId)) return;
 
-  let rule = keywordRule;
+  const rulesToSend = [];
   let cooldownClaim = null;
-  try {
-    if (singleRule) {
+  if (singleRule) {
+    try {
       cooldownClaim = database.claimAutoReplyCooldown(
         singleRule.id,
         chatId,
         Number(singleRule.cooldownHours || 24) * 60 * 60 * 1000
       );
-      if (cooldownClaim) rule = singleRule;
+      if (cooldownClaim) rulesToSend.push(singleRule);
+    } catch (error) {
+      console.error('[AutoReply] Could not claim single-response cooldown:', error.message);
     }
-    if (!rule) return;
+  }
+  if (keywordRule) rulesToSend.push(keywordRule);
+  if (rulesToSend.length === 0) return;
 
+  let sentAny = false;
+  for (const rule of rulesToSend) {
+    const isSingleRule = rule.mode === 'single';
     const attachment = rule.attachmentId ? {
       attachmentId: rule.attachmentId,
       attachmentName: rule.attachmentName,
       attachmentMimeType: rule.attachmentMimeType,
       attachmentKind: rule.attachmentKind
     } : null;
-    const sent = await whatsappClient.sendAutoReply(chatId, rule.reply, attachment);
-    if (!sent) throw new Error('O WhatsApp não confirmou o envio da resposta automática.');
-    console.log(`[AutoReply] Replied to ${chatId} using ${rule.mode === 'single' ? 'single-response rule' : `keyword "${rule.keyword}"`}.`);
-  } catch (error) {
-    if (cooldownClaim) database.releaseAutoReplyCooldown(rule.id, chatId, cooldownClaim);
-    database.releaseAutoReplyMessage(messageId);
-    console.error('[AutoReply] Could not send automatic reply:', error.message);
+    try {
+      const sent = await whatsappClient.sendAutoReply(chatId, rule.reply, attachment);
+      if (!sent) throw new Error('O WhatsApp não confirmou o envio da resposta automática.');
+      sentAny = true;
+      console.log(`[AutoReply] Replied to ${chatId} using ${isSingleRule ? 'single-response rule' : `keyword "${rule.keyword}"`}.`);
+    } catch (error) {
+      if (isSingleRule && cooldownClaim) {
+        database.releaseAutoReplyCooldown(singleRule.id, chatId, cooldownClaim);
+        cooldownClaim = null;
+      }
+      console.error(`[AutoReply] Could not send ${isSingleRule ? 'single-response' : `keyword "${rule.keyword}"`} reply:`, error.message);
+    }
   }
+  if (!sentAny) database.releaseAutoReplyMessage(messageId);
 }
 
 function removeOrphanedAttachments() {
@@ -1192,9 +1206,11 @@ function registerIpcHandlers() {
     if (typeof chatId !== 'string' || !/^[\w.-]+@(?:c\.us|s\.whatsapp\.net|lid)$/i.test(chatId)) {
       throw new Error('Abra uma conversa individual para gerenciar a resposta automática.');
     }
+    const rules = database.getAutoReplyRules();
     return {
       paused: database.isAutoReplyPausedForChat(chatId),
-      enabledRules: database.getAutoReplyRules().filter(rule => Number(rule.enabled) === 1).length
+      enabledRules: rules.filter(rule => Number(rule.enabled) === 1).length,
+      hasSingleRule: rules.some(rule => rule.mode === 'single')
     };
   });
 
@@ -1205,6 +1221,15 @@ function registerIpcHandlers() {
     }
     if (typeof paused !== 'boolean') throw new Error('Estado de pausa inválido.');
     return { paused: database.setAutoReplyPausedForChat(chatId, paused) };
+  });
+
+  ipcMain.handle('whatsapp-web:auto-reply-reset-single-cooldown', (event, chatId) => {
+    if (!isWhatsAppWebEvent(event)) throw new Error('Origem inválida para respostas automáticas.');
+    if (typeof chatId !== 'string' || !/^[\w.-]+@(?:c\.us|s\.whatsapp\.net|lid)$/i.test(chatId)) {
+      throw new Error('Abra uma conversa individual para liberar a resposta única.');
+    }
+    database.resetSingleAutoReplyCooldown(chatId);
+    return { reset: true };
   });
 
   ipcMain.handle('whatsapp-web:auto-reply-open-settings', (event) => {
