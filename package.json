@@ -1,7 +1,7 @@
 {
   "name": "whatsapp-message-scheduler",
   "private": true,
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Aplicativo para computador para agendar e enviar mensagens do WhatsApp automaticamente",
   "main": "electron/main.js",
   "scripts": {

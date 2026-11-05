@@ -6,6 +6,8 @@
 
 const path = require('path');
 const fs = require('fs');
+const MAX_MEDIA_ATTACHMENT_SIZE = 16 * 1024 * 1024;
+const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024 * 1024;
 
 let makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion;
 let QRCode;
@@ -291,27 +293,37 @@ class WhatsAppManager {
         const attachmentPath = path.join(this.userDataPath, 'attachments', `${attachment.attachmentId}${extension}`);
         const fileStats = fs.existsSync(attachmentPath) ? fs.statSync(attachmentPath) : null;
         if (!fileStats?.isFile()) throw new Error('O arquivo anexado não foi encontrado.');
-        if (fileStats.size > 16 * 1024 * 1024) throw new Error('O arquivo anexado excede o limite de 16 MB.');
+        if (fileStats.size > MAX_ATTACHMENT_SIZE) throw new Error('O anexo excede o limite de 2 GB.');
 
-        if (attachment.attachmentKind === 'image') {
+        const attachmentKind = fileStats.size > MAX_MEDIA_ATTACHMENT_SIZE
+          ? 'document'
+          : attachment.attachmentKind;
+        if (attachmentKind === 'image') {
           sent = await this.sock.sendMessage(jid, {
             image: { url: attachmentPath },
             mimetype: attachment.attachmentMimeType,
             ...(messageText ? { caption: messageText } : {})
           });
-        } else if (attachment.attachmentKind === 'video') {
+        } else if (attachmentKind === 'video') {
           sent = await this.sock.sendMessage(jid, {
             video: { url: attachmentPath },
             mimetype: attachment.attachmentMimeType,
             ...(messageText ? { caption: messageText } : {})
           });
-        } else if (attachment.attachmentKind === 'audio') {
+        } else if (attachmentKind === 'audio') {
           sent = await this.sock.sendMessage(jid, {
             audio: { url: attachmentPath },
             mimetype: attachment.attachmentMimeType,
             ptt: false
           });
           if (messageText) await this.sock.sendMessage(jid, { text: messageText });
+        } else if (attachmentKind === 'document') {
+          sent = await this.sock.sendMessage(jid, {
+            document: { url: attachmentPath },
+            mimetype: attachment.attachmentMimeType,
+            fileName: attachment.attachmentName,
+            ...(messageText ? { caption: messageText } : {})
+          });
         } else {
           throw new Error('Tipo de mídia não compatível.');
         }

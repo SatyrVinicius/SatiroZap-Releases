@@ -4,16 +4,18 @@ const { WebContentsView, session } = require('electron');
 
 const WHATSAPP_URL = 'https://web.whatsapp.com/';
 const MAX_MEDIA_ATTACHMENT_SIZE = 16 * 1024 * 1024;
-const MAX_DOCUMENT_ATTACHMENT_SIZE = 2 * 1024 * 1024 * 1024;
+const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024 * 1024;
 
-function getMaxAttachmentSize(kind) {
-  return kind === 'document' ? MAX_DOCUMENT_ATTACHMENT_SIZE : MAX_MEDIA_ATTACHMENT_SIZE;
+function getMaxAttachmentSize() {
+  return MAX_ATTACHMENT_SIZE;
 }
 
-function getAttachmentSizeLimitMessage(kind) {
-  return kind === 'document'
-    ? 'O documento excede o limite de 2 GB.'
-    : 'Imagens, áudios e vídeos excedem o limite de 16 MB.';
+function getAttachmentSizeLimitMessage() {
+  return 'O anexo excede o limite de 2 GB.';
+}
+
+function getAttachmentKind(kind, size) {
+  return kind !== 'document' && size > MAX_MEDIA_ATTACHMENT_SIZE ? 'document' : kind;
 }
 
 function createAttachmentPayload(attachment, filePath) {
@@ -22,9 +24,10 @@ function createAttachmentPayload(attachment, filePath) {
     filename: attachment.attachmentName,
     mimetype: attachment.attachmentMimeType || 'application/octet-stream'
   };
-  if (attachment.attachmentKind === 'document') {
+  if (attachment.attachmentKind === 'document' && fs.statSync(filePath).size > MAX_MEDIA_ATTACHMENT_SIZE) {
     payload.sourceUrl = `https://web.whatsapp.com/__wppautom_attachment/${attachment.attachmentId}/${encodeURIComponent(attachment.attachmentName || 'documento')}`;
   } else {
+    // Inline small documents too, avoiding the local protocol fetch path that can fail before WhatsApp receives the file.
     payload.dataUrl = `data:${payload.mimetype};base64,${fs.readFileSync(filePath).toString('base64')}`;
   }
   return payload;
@@ -312,13 +315,14 @@ class WhatsAppWebClient {
       const attachmentPath = path.join(this.userDataPath, 'attachments', `${quickMessage.attachmentId}${extension}`);
       const stats = fs.existsSync(attachmentPath) ? fs.statSync(attachmentPath) : null;
       if (!stats?.isFile()) throw new Error('O arquivo salvo nesta mensagem rápida não foi encontrado.');
-      if (stats.size > getMaxAttachmentSize(quickMessage.attachmentKind)) {
-        throw new Error(getAttachmentSizeLimitMessage(quickMessage.attachmentKind));
+      if (stats.size > getMaxAttachmentSize()) {
+        throw new Error(getAttachmentSizeLimitMessage());
       }
       if (!['image', 'video', 'audio', 'document'].includes(quickMessage.attachmentKind)) {
         throw new Error('Tipo de arquivo salvo não compatível.');
       }
-      attachment = createAttachmentPayload(quickMessage, attachmentPath);
+      const attachmentKind = getAttachmentKind(quickMessage.attachmentKind, stats.size);
+      attachment = createAttachmentPayload({ ...quickMessage, attachmentKind }, attachmentPath);
     }
 
     const payload = JSON.stringify({ text: quickMessage.message || '', attachment });
@@ -368,10 +372,11 @@ class WhatsAppWebClient {
       const filePath = path.join(this.userDataPath, 'attachments', `${attachment.attachmentId}${extension}`);
       const stats = fs.existsSync(filePath) ? fs.statSync(filePath) : null;
       if (!stats?.isFile()) throw new Error('O arquivo da resposta automática não foi encontrado.');
-      if (stats.size > getMaxAttachmentSize(attachment.attachmentKind)) {
-        throw new Error(getAttachmentSizeLimitMessage(attachment.attachmentKind));
+      if (stats.size > getMaxAttachmentSize()) {
+        throw new Error(getAttachmentSizeLimitMessage());
       }
-      media = createAttachmentPayload(attachment, filePath);
+      const attachmentKind = getAttachmentKind(attachment.attachmentKind, stats.size);
+      media = createAttachmentPayload({ ...attachment, attachmentKind }, filePath);
     }
 
     const payload = JSON.stringify({ chatId, text, media });
@@ -418,13 +423,13 @@ class WhatsAppWebClient {
         const attachmentPath = path.join(this.userDataPath, 'attachments', `${attachment.attachmentId}${extension}`);
         const fileStats = fs.existsSync(attachmentPath) ? fs.statSync(attachmentPath) : null;
         if (!fileStats?.isFile()) throw new Error('O arquivo anexado não foi encontrado.');
-        if (fileStats.size > getMaxAttachmentSize(attachment.attachmentKind)) {
-          throw new Error(getAttachmentSizeLimitMessage(attachment.attachmentKind));
+        if (fileStats.size > getMaxAttachmentSize()) {
+          throw new Error(getAttachmentSizeLimitMessage());
         }
 
-        const kind = attachment.attachmentKind;
+        const kind = getAttachmentKind(attachment.attachmentKind, fileStats.size);
         if (!['image', 'video', 'audio', 'document'].includes(kind)) throw new Error('Tipo de arquivo não compatível.');
-        const attachmentPayload = createAttachmentPayload(attachment, attachmentPath);
+        const attachmentPayload = createAttachmentPayload({ ...attachment, attachmentKind: kind }, attachmentPath);
         const payload = JSON.stringify({ jid, attachment: attachmentPayload, messageText: messageText || '' });
         result = await this.executeInWhatsAppPage(`(async () => {
           const a = ${payload};

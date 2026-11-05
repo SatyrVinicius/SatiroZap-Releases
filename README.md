@@ -36,12 +36,12 @@ Ao contrário de aplicativos simples de lembretes, este aplicativo **envia as me
 
 4. **Agende uma mensagem:**
    - Clique no botão **Agendar mensagem**, na parte inferior.
-   - Selecione o contato e escreva a mensagem. Se quiser, anexe um documento de até 2 GB ou uma imagem, vídeo ou áudio de até 16 MB.
+   - Selecione o contato e escreva a mensagem. Anexe arquivos de até 2 GB; imagens, vídeos e áudios acima de 16 MB são enviados como documentos.
    - Imagens, vídeos e documentos podem usar o texto como legenda; para áudios, o texto é enviado em uma mensagem separada.
    - Escolha a data e o horário e confirme o agendamento.
    - Você pode fechar a janela: o aplicativo continuará na bandeja do sistema e enviará a mensagem no horário programado.
    - Como atalho, abra uma conversa individual no WhatsApp Web e use o botão de automação ao lado do controle de áudio para abrir o formulário com o destinatário preenchido.
-   - Use o botão de mensagens rápidas ao lado do agendamento para enviar imediatamente um texto ou arquivo salvo à conversa aberta; cadastre, edite ou exclua mensagens e anexos pelo próprio menu. Documentos têm limite de 2 GB; imagens, vídeos e áudios, 16 MB.
+   - Use o botão de mensagens rápidas ao lado do agendamento para enviar imediatamente um texto ou arquivo salvo à conversa aberta; cadastre, edite ou exclua mensagens e anexos pelo próprio menu. Anexos têm limite de 2 GB; mídias acima de 16 MB são enviadas como documentos.
 
 ---
 

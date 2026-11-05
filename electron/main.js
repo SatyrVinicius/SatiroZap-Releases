@@ -27,7 +27,7 @@ const pendingAttachments = new Map();
 let pendingAutomationContact = null;
 let mainRendererReady = false;
 const MAX_MEDIA_ATTACHMENT_SIZE = 16 * 1024 * 1024;
-const MAX_DOCUMENT_ATTACHMENT_SIZE = 2 * 1024 * 1024 * 1024;
+const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024 * 1024;
 protocol.registerSchemesAsPrivileged([{
   scheme: 'wpp-attachment',
   privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true }
@@ -77,6 +77,12 @@ const MEDIA_TYPES = {
 
 function getAttachmentType(extension) {
   return MEDIA_TYPES[extension] || { mimeType: 'application/octet-stream', kind: 'document' };
+}
+
+function getAttachmentKind(mediaType, size) {
+  return mediaType.kind !== 'document' && size > MAX_MEDIA_ATTACHMENT_SIZE
+    ? 'document'
+    : mediaType.kind;
 }
 
 function isWhatsAppWebEvent(event) {
@@ -636,14 +642,12 @@ function getAttachmentPath(attachmentId, attachmentName) {
   return path.join(attachmentsDirectory, `${attachmentId}${extension}`);
 }
 
-function getMaxAttachmentSize(kind) {
-  return kind === 'document' ? MAX_DOCUMENT_ATTACHMENT_SIZE : MAX_MEDIA_ATTACHMENT_SIZE;
+function getMaxAttachmentSize() {
+  return MAX_ATTACHMENT_SIZE;
 }
 
-function getAttachmentSizeLimitMessage(kind) {
-  return kind === 'document'
-    ? 'Documentos podem ter no máximo 2 GB; imagens, áudios e vídeos, 16 MB.'
-    : 'Imagens, áudios e vídeos podem ter no máximo 16 MB.';
+function getAttachmentSizeLimitMessage() {
+  return 'Os anexos podem ter no máximo 2 GB.';
 }
 
 function registerAttachmentProtocol() {
@@ -684,7 +688,7 @@ function registerAttachmentProtocol() {
     try {
       const filePath = getAttachmentPath(attachmentId, metadata.attachmentName);
       const stats = fs.statSync(filePath);
-      if (!stats.isFile() || stats.size > MAX_DOCUMENT_ATTACHMENT_SIZE) {
+      if (!stats.isFile() || stats.size > MAX_ATTACHMENT_SIZE) {
         return new Response('Not Found', { status: 404, headers: corsHeaders });
       }
       corsHeaders.set('Content-Type', metadata.attachmentMimeType || 'application/octet-stream');
@@ -741,12 +745,14 @@ function getAttachmentMetadata(attachmentId, existingMessage = null) {
 
   const filePath = getAttachmentPath(attachmentId, metadata.attachmentName);
   if (!fs.existsSync(filePath)) throw new Error('O arquivo anexado não foi encontrado. Selecione-o novamente.');
+  const fileStats = fs.statSync(filePath);
   const mediaType = getAttachmentType(path.extname(metadata.attachmentName).toLowerCase());
-  if (mediaType.kind !== metadata.attachmentKind || mediaType.mimeType !== metadata.attachmentMimeType) {
+  const attachmentKind = getAttachmentKind(mediaType, fileStats.size);
+  if (attachmentKind !== metadata.attachmentKind || mediaType.mimeType !== metadata.attachmentMimeType) {
     throw new Error('Os dados do arquivo anexado são inválidos. Selecione-o novamente.');
   }
-  if (fs.statSync(filePath).size > getMaxAttachmentSize(mediaType.kind)) {
-    throw new Error(getAttachmentSizeLimitMessage(mediaType.kind));
+  if (fileStats.size > getMaxAttachmentSize()) {
+    throw new Error(getAttachmentSizeLimitMessage());
   }
 
   return {
@@ -1041,8 +1047,8 @@ function registerIpcHandlers() {
 
     const fileStats = fs.statSync(sourcePath);
     if (!fileStats.isFile()) throw new Error('Selecione um arquivo válido.');
-    if (fileStats.size > getMaxAttachmentSize(mediaType.kind)) {
-      throw new Error(getAttachmentSizeLimitMessage(mediaType.kind));
+    if (fileStats.size > getMaxAttachmentSize()) {
+      throw new Error(getAttachmentSizeLimitMessage());
     }
 
     const attachmentId = crypto.randomUUID();
@@ -1054,7 +1060,7 @@ function registerIpcHandlers() {
       attachmentId,
       attachmentName,
       attachmentMimeType: mediaType.mimeType,
-      attachmentKind: mediaType.kind,
+      attachmentKind: getAttachmentKind(mediaType, fileStats.size),
       attachmentSize: fileStats.size
     };
     pendingAttachments.set(attachmentId, metadata);
@@ -1318,8 +1324,8 @@ function registerIpcHandlers() {
     const mediaType = getAttachmentType(extension);
     const stats = fs.statSync(sourcePath);
     if (!stats.isFile()) throw new Error('Selecione um arquivo válido.');
-    if (stats.size > getMaxAttachmentSize(mediaType.kind)) {
-      throw new Error(getAttachmentSizeLimitMessage(mediaType.kind));
+    if (stats.size > getMaxAttachmentSize()) {
+      throw new Error(getAttachmentSizeLimitMessage());
     }
 
     const attachmentId = crypto.randomUUID();
@@ -1329,7 +1335,7 @@ function registerIpcHandlers() {
       attachmentId,
       attachmentName,
       attachmentMimeType: mediaType.mimeType,
-      attachmentKind: mediaType.kind,
+      attachmentKind: getAttachmentKind(mediaType, stats.size),
       attachmentSize: stats.size
     };
     pendingAttachments.set(attachmentId, metadata);
