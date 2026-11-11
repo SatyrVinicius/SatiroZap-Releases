@@ -7,6 +7,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
+  controlWindow: (action) => ipcRenderer.invoke('window:control', action),
+
   // ============================
   // WhatsApp Connection
   // ============================

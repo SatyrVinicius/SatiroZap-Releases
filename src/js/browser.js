@@ -17,7 +17,6 @@ export function initBrowserControls(onError = () => {}) {
     chromeToggle.setAttribute('aria-expanded', String(!state.chromeCollapsed));
     chromeToggle.setAttribute('aria-label', state.chromeCollapsed ? 'Mostrar barra do navegador' : 'Ocultar barra do navegador');
     chromeToggle.title = state.chromeCollapsed ? 'Mostrar barra do navegador' : 'Ocultar barra do navegador';
-    chromeToggle.textContent = state.chromeCollapsed ? '⌄' : '⌃';
     tabList.replaceChildren();
 
     for (const tab of state.tabs) {

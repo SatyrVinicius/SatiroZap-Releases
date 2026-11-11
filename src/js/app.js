@@ -50,6 +50,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   });
+  document.querySelectorAll('[data-window-action]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      try {
+        await window.api.controlWindow(button.dataset.windowAction);
+      } catch (error) {
+        UI.showToast(error.message || 'Não foi possível controlar a janela.', 'error');
+      }
+    });
+  });
   updateNavigationState(await window.api.getActiveEmbeddedPage());
   initBrowserControls((error) => UI.showToast(error.message || 'Falha ao navegar.', 'error'));
 

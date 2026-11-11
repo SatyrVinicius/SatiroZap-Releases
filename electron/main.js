@@ -312,7 +312,12 @@ function updateEmbeddedViewBounds() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const [width, height] = mainWindow.getContentSize();
   const browserChromeHeight = browserChromeCollapsed ? BROWSER_CHROME_COLLAPSED_HEIGHT : BROWSER_CHROME_HEIGHT;
-  const whatsappBounds = { x: SIDEBAR_WIDTH, y: 0, width: Math.max(1, width - SIDEBAR_WIDTH), height: Math.max(1, height) };
+  const whatsappBounds = {
+    x: SIDEBAR_WIDTH,
+    y: 0,
+    width: Math.max(1, width - SIDEBAR_WIDTH),
+    height: Math.max(1, height)
+  };
   const browserBounds = {
     x: SIDEBAR_WIDTH,
     y: browserChromeHeight,
@@ -927,6 +932,7 @@ function createWindow() {
     minHeight: 650,
     icon: appIcon,
     title: 'SátiroZap',
+    frame: false,
     show: false, // Show after ready-to-show to avoid flicker
     backgroundColor: '#0C1317',
     webPreferences: {
@@ -984,6 +990,19 @@ function createWindow() {
 // Register all IPC Handlers
 // ================================================================
 function registerIpcHandlers() {
+  ipcMain.handle('window:control', (event, action) => {
+    if (!isMainRendererEvent(event)) throw new Error('Origem inválida para os controles da janela.');
+    if (!mainWindow || mainWindow.isDestroyed()) return false;
+
+    if (action === 'minimize') mainWindow.minimize();
+    else if (action === 'maximize') {
+      if (mainWindow.isMaximized()) mainWindow.unmaximize();
+      else mainWindow.maximize();
+    } else if (action === 'close') mainWindow.close();
+    else throw new Error('Controle de janela inválido.');
+    return true;
+  });
+
   ipcMain.on('whatsapp:link-send-sound-failed', (event) => {
     if (!isMainRendererEvent(event)) return;
     try { shell.beep(); } catch (error) {

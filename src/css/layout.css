@@ -25,6 +25,7 @@
   padding: 0 8px 12px;
   background: #111b21;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
+  -webkit-app-region: drag;
 }
 
 .app-sidebar-spacer {
@@ -51,6 +52,7 @@
   border-radius: 14px;
   color: #aebac1;
   transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  -webkit-app-region: no-drag;
 }
 
 .app-sidebar-button:hover,
@@ -96,6 +98,78 @@
   width: 30px;
   height: 30px;
   object-fit: contain;
+}
+
+.window-control-stack {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transform: translate(-50%, -50%);
+  -webkit-app-region: no-drag;
+}
+
+.window-control-button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #aebac1;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  -webkit-app-region: no-drag;
+}
+
+.window-control-close {
+  color: #fff;
+  background: #e53935;
+}
+
+.window-control-button:hover,
+.window-control-button:focus-visible {
+  color: #fff;
+  background: #26363e;
+}
+
+.window-control-minimize {
+  color: #fff;
+  background: #f4c430;
+}
+
+.window-control-minimize:hover,
+.window-control-minimize:focus-visible {
+  color: #fff;
+  background: #d9a900;
+}
+
+.window-control-maximize {
+  color: #fff;
+  background: #5b8def;
+}
+
+.window-control-maximize:hover,
+.window-control-maximize:focus-visible {
+  color: #fff;
+  background: #4169e1;
+}
+
+.window-control-button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.window-control-close:hover,
+.window-control-close:focus-visible {
+  color: #fff;
+  background: #c62828;
 }
 
 .browser-chrome {
@@ -215,6 +289,15 @@ body.browser-page-active .app-viewport {
   background: #1fb85a;
 }
 
+.browser-chrome-toggle svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
 .browser-toolbar {
   height: 70px;
   min-height: 70px;
@@ -304,7 +387,6 @@ body.browser-chrome-collapsed .browser-toolbar {
 
 body.browser-chrome-collapsed .browser-chrome-toggle {
   margin: 0 auto;
-  transform: rotate(180deg);
 }
 
 /* Header */
