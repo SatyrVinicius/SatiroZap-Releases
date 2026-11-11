@@ -410,7 +410,7 @@ class WhatsAppWebClient {
     return sent === true;
   }
 
-  async sendMessage(phone, messageText, attachment = null) {
+  async sendMessage(phone, messageText, attachment = null, options = {}) {
     const cleanPhone = String(phone || '').replace(/\D/g, '');
     if (!/^\d{7,15}$/.test(cleanPhone)) throw new Error(`Número de telefone inválido: ${phone}`);
     const jid = `${cleanPhone}@c.us`;
@@ -448,11 +448,41 @@ class WhatsAppWebClient {
           return typeof messageId === 'string' ? messageId : '';
         })()`);
       } else {
-        const payload = JSON.stringify({ jid, text: messageText || '' });
+        const payload = JSON.stringify({ jid, text: messageText || '', openChatFirst: options.openChatFirst === true });
         result = await this.executeInWhatsAppPage(`(async () => {
           const a = ${payload};
           if (!window.WPP?.chat?.sendTextMessage) throw new Error('A integração com o WhatsApp ainda está carregando.');
-          const sent = await window.WPP.chat.sendTextMessage(a.jid, a.text);
+          if (!window.WPP?.contact?.queryWidExists) throw new Error('A resolução de contatos do WhatsApp ainda está carregando.');
+          let contact;
+          try {
+            contact = await window.WPP.contact.queryWidExists(a.jid);
+          } catch (error) {
+            throw new Error('A consulta do número no WhatsApp falhou: ' + (error.message || error));
+          }
+          if (!contact) throw new Error('Este número não está registrado no WhatsApp ou não pode ser encontrado.');
+          let targetJid = contact.lid?._serialized || contact.wid?._serialized || contact.wid?.toString?.() || a.jid;
+          if (a.openChatFirst) {
+            if (!window.WPP.chat.openChatBottom || !window.WPP.chat.getActiveChat) {
+              throw new Error('O WhatsApp ainda não disponibilizou a abertura de conversas.');
+            }
+            let opened;
+            try {
+              opened = await window.WPP.chat.openChatBottom(targetJid);
+            } catch (error) {
+              throw new Error('Não foi possível abrir a conversa pelo fluxo do WhatsApp: ' + (error.message || error));
+            }
+            if (opened !== true) throw new Error('O WhatsApp não conseguiu abrir uma conversa para este número.');
+            const activeChat = await window.WPP.chat.getActiveChat();
+            const activeChatId = activeChat?.id?._serialized || activeChat?.id?.toString?.() || '';
+            if (!activeChatId) throw new Error('O WhatsApp abriu uma conversa sem identificador de destinatário.');
+            targetJid = activeChatId;
+          }
+          let sent;
+          try {
+            sent = await window.WPP.chat.sendTextMessage(targetJid, a.text);
+          } catch (error) {
+            throw new Error('O WhatsApp encontrou o destinatário (' + targetJid + '), mas recusou o envio: ' + (error.message || error));
+          }
           const messageId = sent?.id?._serialized || sent?.id;
           return typeof messageId === 'string' ? messageId : '';
         })()`);

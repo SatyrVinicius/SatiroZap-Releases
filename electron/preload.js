@@ -29,6 +29,12 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('whatsapp:link-send-status', handler);
     return () => ipcRenderer.removeListener('whatsapp:link-send-status', handler);
   },
+  onWhatsAppLinkSendSound: (callback) => {
+    const handler = (_event, dataUrl) => callback(dataUrl);
+    ipcRenderer.on('whatsapp:link-send-sound', handler);
+    return () => ipcRenderer.removeListener('whatsapp:link-send-sound', handler);
+  },
+  reportWhatsAppLinkSendSoundFailed: () => ipcRenderer.send('whatsapp:link-send-sound-failed'),
   getBrowserState: () => ipcRenderer.invoke('browser:get-state'),
   toggleBrowserChrome: () => ipcRenderer.invoke('browser:toggle-chrome'),
   newBrowserTab: () => ipcRenderer.invoke('browser:new-tab'),

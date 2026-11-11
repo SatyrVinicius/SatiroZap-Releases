@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   UI.init();
 
   const navigationButtons = [...document.querySelectorAll('[data-embedded-page]')];
+  const whatsappSidebarButton = document.querySelector('.app-sidebar-button[data-embedded-page="whatsapp"]');
   const updateNavigationState = (activePage) => {
     navigationButtons.forEach((button) => {
       const active = button.dataset.embeddedPage === activePage;
@@ -25,11 +26,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.api.onEmbeddedPageChanged(updateNavigationState);
   window.api.onWhatsAppLinkSendStatus(({ status, phone, message }) => {
     if (status === 'sending') UI.showToast(`Enviando mensagem para +${phone}...`, 'info');
-    else if (status === 'success') UI.showToast(`Mensagem enviada para +${phone}.`, 'success');
-    else if (status === 'error') UI.showToast(message || 'Não foi possível enviar a mensagem pelo WhatsApp.', 'error');
+    else if (status === 'success') {
+      whatsappSidebarButton?.classList.add('message-sent-alert');
+      UI.showToast(`Mensagem enviada para +${phone}.`, 'success');
+    } else if (status === 'error') UI.showToast(message || 'Não foi possível enviar a mensagem pelo WhatsApp.', 'error');
+  });
+  window.api.onWhatsAppLinkSendSound((dataUrl) => {
+    const audio = new Audio(dataUrl);
+    audio.play().catch((error) => {
+      console.warn('Não foi possível reproduzir o áudio personalizado:', error);
+      window.api.reportWhatsAppLinkSendSoundFailed();
+    });
   });
   navigationButtons.forEach((button) => {
     button.addEventListener('click', async () => {
+      if (button === whatsappSidebarButton) {
+        whatsappSidebarButton.classList.remove('message-sent-alert');
+      }
       try {
         updateNavigationState(await window.api.selectEmbeddedPage(button.dataset.embeddedPage));
       } catch (error) {

@@ -10,6 +10,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const database = require('./database');
+const { getWhatsAppSendRequest, normalizeWhatsAppPhone } = require('./whatsappLink');
 const { whatsappClient } = require('./whatsappWebClient');
 const { scheduler } = require('./scheduler');
 const { createTray, startTrayUpdater, destroyTray } = require('./tray');
@@ -22,6 +23,7 @@ let activeBrowserTabId = null;
 let activeEmbeddedPage = 'google';
 let browserChromeCollapsed = true;
 let browserSession = null;
+const pendingWhatsAppLinkSends = new Set();
 let attachmentsDirectory = null;
 const pendingAttachments = new Map();
 let pendingAutomationContact = null;
@@ -380,21 +382,11 @@ function normalizeBrowserPopupUrl(input) {
   throw new Error('O site tentou abrir um tipo de endereço não permitido.');
 }
 
-function getWhatsAppSendRequest(input) {
-  try {
-    const url = new URL(input);
-    if (url.protocol !== 'https:' || url.hostname !== 'api.whatsapp.com' || !/^\/send\/?$/.test(url.pathname)) return null;
-    const phone = url.searchParams.get('phone') || '';
-    const message = url.searchParams.get('text') || '';
-    if (!phone || !message.trim()) return null;
-    return { phone, message };
-  } catch {
-    return null;
-  }
-}
-
 function sendWhatsAppMessageFromLink(request) {
-  const phone = request.phone.replace(/\D/g, '');
+  const phone = normalizeWhatsAppPhone(request.phone);
+  const requestKey = `${phone}\u0000${request.message}`;
+  if (pendingWhatsAppLinkSends.has(requestKey)) return;
+  pendingWhatsAppLinkSends.add(requestKey);
   const notify = (status, details = {}) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('whatsapp:link-send-status', { status, phone, ...details });
@@ -402,12 +394,27 @@ function sendWhatsAppMessageFromLink(request) {
   };
 
   notify('sending');
-  whatsappClient.sendMessage(phone, request.message)
-    .then(() => notify('success'))
+  console.info(`[WhatsApp] Link send requested for +${phone}.`);
+  whatsappClient.sendMessage(phone, request.message, null, { openChatFirst: true })
+    .then(() => {
+      notify('success');
+      const soundPath = path.join(app.getPath('downloads'), 'enviado.mp3');
+      fs.readFile(soundPath, (error, sound) => {
+        if (error) {
+          console.warn(`[WhatsApp] Custom send sound unavailable (${soundPath}):`, error.message);
+          try { shell.beep(); } catch {}
+          return;
+        }
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('whatsapp:link-send-sound', `data:audio/mpeg;base64,${sound.toString('base64')}`);
+        }
+      });
+    })
     .catch((error) => {
       console.error('[WhatsApp] Could not send message from website link:', error);
       notify('error', { message: error.message || 'Não foi possível enviar a mensagem pelo WhatsApp.' });
-    });
+    })
+    .finally(() => pendingWhatsAppLinkSends.delete(requestKey));
 }
 
 function isAllowedBrowserNavigation(input) {
@@ -502,6 +509,24 @@ function getBrowserSession() {
       }
     });
   });
+  browserSession.webRequest.onBeforeRequest({
+    urls: [
+      'https://api.whatsapp.com/*',
+      'https://*.whatsapp.com/*',
+      'https://whatsapp.com/*',
+      'https://wa.me/*'
+    ],
+    types: ['mainFrame']
+  }, (details, callback) => {
+    const request = getWhatsAppSendRequest(details.url);
+    if (request) {
+      console.info(`[Browser] Intercepted WhatsApp send navigation from ${details.url.split('?')[0]}.`);
+      sendWhatsAppMessageFromLink(request);
+      callback({ cancel: true });
+      return;
+    }
+    callback({});
+  });
   return browserSession;
 }
 
@@ -512,6 +537,7 @@ function createBrowserTab(initialUrl = 'https://pms.satirosistemas.com.br/') {
   const view = new WebContentsView({
     webPreferences: {
       session: getBrowserSession(),
+      preload: path.join(__dirname, 'browser-preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -537,6 +563,12 @@ function createBrowserTab(initialUrl = 'https://pms.satirosistemas.com.br/') {
     return { action: 'deny' };
   });
   const allowSecureNavigation = (event, url) => {
+    const whatsappRequest = getWhatsAppSendRequest(url);
+    if (whatsappRequest) {
+      event.preventDefault();
+      sendWhatsAppMessageFromLink(whatsappRequest);
+      return;
+    }
     if (!isAllowedBrowserNavigation(url)) event.preventDefault();
   };
   view.webContents.on('will-navigate', allowSecureNavigation);
@@ -880,7 +912,7 @@ if (!gotTheLock) {
  */
 function createWindow() {
   mainRendererReady = false;
-  const iconPath = path.join(__dirname, '..', 'assets', 'icons', 'pms-satiro.ico');
+  const iconPath = path.join(__dirname, '..', 'assets', 'icons', 'satiropms-app.ico');
   let appIcon;
   try {
     appIcon = nativeImage.createFromPath(iconPath);
@@ -952,6 +984,23 @@ function createWindow() {
 // Register all IPC Handlers
 // ================================================================
 function registerIpcHandlers() {
+  ipcMain.on('whatsapp:link-send-sound-failed', (event) => {
+    if (!isMainRendererEvent(event)) return;
+    try { shell.beep(); } catch (error) {
+      console.warn('[WhatsApp] Could not play fallback send sound:', error.message);
+    }
+  });
+
+  ipcMain.on('browser:whatsapp-send-link', (event, input) => {
+    const isBrowserTab = browserTabs.some(tab => tab.view.webContents === event.sender);
+    if (!isBrowserTab || event.senderFrame !== event.sender.mainFrame) return;
+
+    const request = getWhatsAppSendRequest(input);
+    if (!request) return;
+    console.info('[Browser] WhatsApp message link clicked by the user.');
+    sendWhatsAppMessageFromLink(request);
+  });
+
   // --- In-app navigation ---
   ipcMain.handle('navigation:get-active', (event) => {
     if (!isMainRendererEvent(event)) throw new Error('Origem inválida para navegação.');

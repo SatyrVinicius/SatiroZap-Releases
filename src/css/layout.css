@@ -74,6 +74,24 @@
   box-shadow: inset 3px 0 #4285f4;
 }
 
+.app-sidebar-button.message-sent-alert {
+  animation: whatsapp-message-sent-alert 0.9s ease-in-out infinite;
+}
+
+@keyframes whatsapp-message-sent-alert {
+  0%, 100% {
+    color: #111b21;
+    background-color: #ff9800;
+    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.35);
+  }
+
+  50% {
+    color: #ffb74d;
+    background-color: rgba(255, 152, 0, 0.12);
+    box-shadow: inset 0 0 0 2px #ff9800;
+  }
+}
+
 .app-sidebar-pms-icon {
   width: 30px;
   height: 30px;

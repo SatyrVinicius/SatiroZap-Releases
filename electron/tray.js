@@ -16,7 +16,7 @@ let tray = null;
  */
 function createTray(mainWindow) {
   // Load tray icon
-  const iconPath = path.join(__dirname, '..', 'assets', 'icons', 'pms-satiro.ico');
+  const iconPath = path.join(__dirname, '..', 'assets', 'icons', 'satiropms-app.ico');
   let trayIcon;
 
   try {
