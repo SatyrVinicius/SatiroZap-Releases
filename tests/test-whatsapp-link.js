@@ -18,4 +18,13 @@ assert.equal(secondRequest?.message, 'Outra mensagem 👋');
 assert.equal(normalizeWhatsAppPhone(secondRequest.phone), '551187654321');
 assert.equal(normalizeWhatsAppPhone('5584991361736'), '558491361736');
 
+const openOnlyRequest = getWhatsAppSendRequest(
+	'https://api.whatsapp.com/send/?phone=5584991361736&text&type=phone_number&app_absent=0'
+);
+assert.equal(openOnlyRequest?.phone, '5584991361736');
+assert.equal(openOnlyRequest?.message, '');
+assert.equal(openOnlyRequest?.openOnly, true);
+assert.equal(normalizeWhatsAppPhone(openOnlyRequest.phone), '558491361736');
+assert.equal(getWhatsAppSendRequest('https://api.whatsapp.com/send/?phone=abc&text'), null);
+
 console.log('Links com números e mensagens diferentes foram parseados corretamente.');

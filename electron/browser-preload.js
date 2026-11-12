@@ -13,7 +13,7 @@ const getWhatsAppSendUrl = (input) => {
 
     const phone = url.searchParams.get('phone') || (isShortLink ? url.pathname.slice(1) : '');
     const text = url.searchParams.get('text') || '';
-    return phone && text.trim() ? url.toString() : null;
+    return /^\d{7,15}$/.test(phone.replace(/\D/g, '')) ? url.toString() : null;
   } catch {
     return null;
   }

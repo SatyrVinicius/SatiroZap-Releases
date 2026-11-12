@@ -422,6 +422,29 @@ function sendWhatsAppMessageFromLink(request) {
     .finally(() => pendingWhatsAppLinkSends.delete(requestKey));
 }
 
+function openWhatsAppChatFromLink(request) {
+  const phone = normalizeWhatsAppPhone(request.phone);
+  const notify = (status, details = {}) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('whatsapp:link-send-status', { status, phone, ...details });
+    }
+  };
+
+  notify('opening');
+  setEmbeddedPage('whatsapp');
+  whatsappClient.openChat(phone)
+    .then(() => notify('opened'))
+    .catch((error) => {
+      console.error('[WhatsApp] Could not open chat from link:', error);
+      notify('error', { message: error.message || 'Não foi possível abrir a conversa pelo WhatsApp.' });
+    });
+}
+
+function handleWhatsAppLinkRequest(request) {
+  if (request.openOnly) openWhatsAppChatFromLink(request);
+  else sendWhatsAppMessageFromLink(request);
+}
+
 function isAllowedBrowserNavigation(input) {
   try {
     const url = new URL(input);
@@ -526,7 +549,7 @@ function getBrowserSession() {
     const request = getWhatsAppSendRequest(details.url);
     if (request) {
       console.info(`[Browser] Intercepted WhatsApp send navigation from ${details.url.split('?')[0]}.`);
-      sendWhatsAppMessageFromLink(request);
+      handleWhatsAppLinkRequest(request);
       callback({ cancel: true });
       return;
     }
@@ -556,7 +579,7 @@ function createBrowserTab(initialUrl = 'https://pms.satirosistemas.com.br/') {
   view.webContents.setWindowOpenHandler(({ url }) => {
     const whatsappRequest = getWhatsAppSendRequest(url);
     if (whatsappRequest) {
-      sendWhatsAppMessageFromLink(whatsappRequest);
+      handleWhatsAppLinkRequest(whatsappRequest);
       return { action: 'deny' };
     }
     try {
@@ -571,7 +594,7 @@ function createBrowserTab(initialUrl = 'https://pms.satirosistemas.com.br/') {
     const whatsappRequest = getWhatsAppSendRequest(url);
     if (whatsappRequest) {
       event.preventDefault();
-      sendWhatsAppMessageFromLink(whatsappRequest);
+      handleWhatsAppLinkRequest(whatsappRequest);
       return;
     }
     if (!isAllowedBrowserNavigation(url)) event.preventDefault();
@@ -1016,8 +1039,10 @@ function registerIpcHandlers() {
 
     const request = getWhatsAppSendRequest(input);
     if (!request) return;
-    console.info('[Browser] WhatsApp message link clicked by the user.');
-    sendWhatsAppMessageFromLink(request);
+    console.info(request.openOnly
+      ? '[Browser] WhatsApp chat link clicked by the user.'
+      : '[Browser] WhatsApp message link clicked by the user.');
+    handleWhatsAppLinkRequest(request);
   });
 
   // --- In-app navigation ---

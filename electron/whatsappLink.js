@@ -13,8 +13,9 @@ function getWhatsAppSendRequest(input) {
     const params = new URLSearchParams(url.search);
     const phone = params.get('phone') || (isShortLink ? url.pathname.slice(1) : '');
     const message = params.get('text') || '';
-    if (!phone || !message.trim()) return null;
-    return { phone: phone.replace(/\D/g, ''), message };
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (!/^\d{7,15}$/.test(cleanPhone)) return null;
+    return { phone: cleanPhone, message, openOnly: !message.trim() };
   } catch {
     return null;
   }

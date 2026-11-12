@@ -279,6 +279,51 @@ class WhatsAppWebClient {
     return this.webContents.executeJavaScript(source, true);
   }
 
+  async openChat(phone) {
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    if (!/^\d{7,15}$/.test(cleanPhone)) throw new Error('Número de telefone inválido.');
+
+    const jid = `${cleanPhone}@s.whatsapp.net`;
+    const activeChatId = await this.executeInWhatsAppPage(`(async () => {
+      const jid = ${JSON.stringify(jid)};
+      if (!window.WPP?.contact?.queryWidExists) throw new Error('A resolução de contatos do WhatsApp ainda está carregando.');
+      if (!window.WPP?.chat?.openChatBottom || !window.WPP.chat.getActiveChat) {
+        throw new Error('O WhatsApp ainda não disponibilizou a abertura de conversas.');
+      }
+      let contact;
+      try {
+        contact = await window.WPP.contact.queryWidExists(jid);
+      } catch (error) {
+        throw new Error('A consulta do número no WhatsApp falhou: ' + (error.message || error));
+      }
+      if (!contact) throw new Error('Este número não está registrado no WhatsApp ou não pode ser encontrado.');
+      const targetJid = contact.lid?._serialized || contact.wid?._serialized || contact.wid?.toString?.() || jid;
+      let opened;
+      try {
+        opened = await window.WPP.chat.openChatBottom(targetJid);
+      } catch (error) {
+        throw new Error('Não foi possível abrir a conversa pelo fluxo do WhatsApp: ' + (error.message || error));
+      }
+      if (opened !== true) throw new Error('O WhatsApp não conseguiu abrir uma conversa para este número.');
+      const activeChat = await window.WPP.chat.getActiveChat();
+      const activeChatId = activeChat?.id?._serialized || activeChat?.id?.toString?.() || '';
+      if (!activeChatId) throw new Error('O WhatsApp abriu uma conversa sem identificador de destinatário.');
+
+      let composer = null;
+      for (let attempt = 0; attempt < 30 && !composer; attempt++) {
+        composer = document.querySelector('[data-testid="conversation-compose-box-input"]');
+        if (!composer) await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      if (composer) {
+        composer.focus();
+        composer.click();
+      }
+      return activeChatId;
+    })()`);
+    if (this.webContents && !this.webContents.isDestroyed()) this.webContents.focus();
+    return activeChatId;
+  }
+
   async syncContacts() {
     const contacts = await this.executeInWhatsAppPage(`(async () => {
       if (!window.WPP?.contact?.list) throw new Error('A integração com o WhatsApp ainda está carregando.');

@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.api.onEmbeddedPageChanged(updateNavigationState);
   window.api.onWhatsAppLinkSendStatus(({ status, phone, message }) => {
     if (status === 'sending') UI.showToast(`Enviando mensagem para +${phone}...`, 'info');
+    else if (status === 'opening') UI.showToast(`Abrindo conversa com +${phone}...`, 'info');
+    else if (status === 'opened') UI.showToast(`Conversa com +${phone} aberta.`, 'success');
     else if (status === 'success') {
       whatsappSidebarButton?.classList.add('message-sent-alert');
       UI.showToast(`Mensagem enviada para +${phone}.`, 'success');
