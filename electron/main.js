@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const { Readable } = require('stream');
 const database = require('./database');
 const { getWhatsAppSendRequest, normalizeWhatsAppPhone } = require('./whatsappLink');
+const { isValidTimeRange, rangesOverlap, selectSingleAutoReplyRule } = require('./autoReplySchedule');
 const { whatsappClient } = require('./whatsappWebClient');
 const { scheduler } = require('./scheduler');
 const { createTray, startTrayUpdater, destroyTray } = require('./tray');
@@ -853,7 +854,7 @@ async function handleIncomingWhatsAppMessage(event, payload) {
   const enabledRules = database.getAutoReplyRules().filter(rule => Number(rule.enabled) === 1);
   if (enabledRules.length === 0) return;
 
-  const singleRule = enabledRules.find(candidate => candidate.mode === 'single');
+  const singleRule = selectSingleAutoReplyRule(enabledRules, new Date());
   const keywordRule = findAutoReplyRule(messageText);
   if (!singleRule && !keywordRule) return;
   if (!database.claimAutoReplyMessage(messageId)) return;
@@ -1358,9 +1359,11 @@ function registerIpcHandlers() {
     const mode = typeof data.mode === 'string' ? data.mode : (existing?.mode || 'keyword');
     if (!['keyword', 'single'].includes(mode)) throw new Error('Tipo de resposta automática inválido.');
     const rules = database.getAutoReplyRules();
-    if (mode === 'single' && rules.some(rule => rule.mode === 'single' && rule.id !== id)) {
-      throw new Error('Já existe uma Resposta única cadastrada. Edite a regra existente para alterar a mensagem ou o intervalo.');
-    }
+    const isFallback = mode === 'single'
+      ? (typeof data.isFallback === 'boolean' ? data.isFallback : (existing ? Number(existing.isFallback) === 1 : true))
+      : false;
+    const startTime = mode === 'single' && !isFallback ? data.startTime : null;
+    const endTime = mode === 'single' && !isFallback ? data.endTime : null;
     const keyword = mode === 'single' ? '' : (typeof data.keyword === 'string' ? data.keyword.trim().slice(0, 100) : '');
     const reply = typeof data.reply === 'string' ? data.reply.trim().slice(0, 1000) : '';
     const cooldownHours = data.cooldownHours === undefined ? Number(existing?.cooldownHours || 24) : Number(data.cooldownHours);
@@ -1370,9 +1373,21 @@ function registerIpcHandlers() {
     if (!Number.isInteger(cooldownHours) || cooldownHours < 1 || cooldownHours > 720) {
       throw new Error('O intervalo deve ser de 1 a 720 horas.');
     }
+    if (mode === 'single' && !isFallback && !isValidTimeRange(startTime, endTime)) {
+      throw new Error('Informe um intervalo de horário válido. O horário inicial e final não podem ser iguais.');
+    }
+    if (mode === 'single' && isFallback && rules.some(rule => rule.mode === 'single' && Number(rule.isFallback) === 1 && rule.id !== id)) {
+      throw new Error('Já existe uma resposta única geral. Edite ou exclua essa regra antes de cadastrar outra.');
+    }
+    if (mode === 'single' && !isFallback && rules.some(rule =>
+      rule.mode === 'single' && Number(rule.isFallback) !== 1 && rule.id !== id
+      && rangesOverlap({ startTime, endTime }, rule)
+    )) {
+      throw new Error('Esse intervalo de horário se sobrepõe a outra resposta única. Escolha um horário diferente.');
+    }
     if (!reply && !attachment.attachmentId) throw new Error('Digite uma resposta ou anexe um arquivo.');
     if (rules.length >= 100 && !id) throw new Error('Você pode cadastrar até 100 regras.');
-    const saved = database.saveAutoReplyRule({ id, keyword, reply, mode, cooldownHours, ...attachment, enabled: existing ? Number(existing.enabled) === 1 : true });
+    const saved = database.saveAutoReplyRule({ id, keyword, reply, mode, cooldownHours, isFallback, startTime, endTime, ...attachment, enabled: existing ? Number(existing.enabled) === 1 : true });
     if (attachment.attachmentId) pendingAttachments.delete(attachment.attachmentId);
     if (existing?.attachmentId && existing.attachmentId !== attachment.attachmentId) {
       removeAttachmentIfUnused(existing.attachmentId, existing.attachmentName);

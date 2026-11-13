@@ -540,6 +540,25 @@
                 <input class="input-box" id="autoReplyCooldownHours" type="number" min="1" max="720" step="1" value="24">
                 <span class="auto-reply-attachment-hint">A resposta será enviada novamente para esse contato somente depois desse intervalo.</span>
               </div>
+              <div class="form-group" id="autoReplySingleTypeGroup" hidden>
+                <label class="form-label" for="autoReplySingleType">Quando usar esta resposta única</label>
+                <select class="input-box" id="autoReplySingleType">
+                  <option value="fallback">Geral (usar quando nenhum horário corresponder)</option>
+                  <option value="schedule">Em um intervalo de horário diário</option>
+                </select>
+              </div>
+              <div class="form-group auto-reply-time-range" id="autoReplyTimeRangeGroup" hidden>
+                <label class="form-label">Horário diário</label>
+                <div class="auto-reply-time-inputs">
+                  <label class="auto-reply-time-field" for="autoReplyStartTime">Das
+                    <input class="input-box" id="autoReplyStartTime" type="time" step="60">
+                  </label>
+                  <label class="auto-reply-time-field" for="autoReplyEndTime">Até
+                    <input class="input-box" id="autoReplyEndTime" type="time" step="60">
+                  </label>
+                </div>
+                <span class="auto-reply-attachment-hint">Repete todos os dias no horário local deste computador. O horário inicial é incluído e o final não.</span>
+              </div>
               <div class="form-group">
                 <label class="form-label" for="autoReplyText">Resposta enviada</label>
                 <textarea class="input-box textarea-box" id="autoReplyText" maxlength="1000" rows="3"
@@ -556,7 +575,7 @@
                 <button type="button" class="btn btn-ghost" id="autoReplyCancelEditBtn" hidden>Cancelar edição</button>
               </div>
             </form>
-            <p class="auto-replies-note">Respostas por palavra ignoram maiúsculas e acentos e consideram o termo como palavra/frase inteira. Na primeira mensagem recebida, a resposta única é enviada primeiro; se a mensagem também corresponder a uma palavra/frase, essa resposta é enviada em seguida. A resposta única respeita o intervalo por contato, mas isso não pausa as respostas por palavra/frase. Não responde grupos nem suas próprias mensagens.</p>
+            <p class="auto-replies-note">Respostas por palavra ignoram maiúsculas e acentos e consideram o termo como palavra/frase inteira. Você pode cadastrar várias respostas únicas por horário diário e uma resposta geral opcional; a geral será usada se nenhum horário corresponder. As janelas não podem se sobrepor. Quando aplicável, a resposta única é enviada primeiro; se também houver correspondência de palavra/frase, essa resposta é enviada em seguida. Cada resposta única respeita seu intervalo por contato. Não responde grupos nem suas próprias mensagens.</p>
             <div id="autoReplyRulesList" class="auto-reply-rules-list" aria-live="polite"></div>
           </div>
         </div>

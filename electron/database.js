@@ -92,6 +92,9 @@ function createTables() {
       reply TEXT NOT NULL,
       mode TEXT NOT NULL DEFAULT 'keyword',
       cooldownHours INTEGER NOT NULL DEFAULT 24,
+      isFallback INTEGER NOT NULL DEFAULT 0,
+      startTime TEXT,
+      endTime TEXT,
       enabled INTEGER NOT NULL DEFAULT 1,
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL
@@ -145,6 +148,12 @@ function createTables() {
   });
   if (!autoReplyColumns.has('mode')) db.run("ALTER TABLE auto_reply_rules ADD COLUMN mode TEXT NOT NULL DEFAULT 'keyword'");
   if (!autoReplyColumns.has('cooldownHours')) db.run('ALTER TABLE auto_reply_rules ADD COLUMN cooldownHours INTEGER NOT NULL DEFAULT 24');
+  if (!autoReplyColumns.has('isFallback')) {
+    db.run('ALTER TABLE auto_reply_rules ADD COLUMN isFallback INTEGER NOT NULL DEFAULT 0');
+    db.run("UPDATE auto_reply_rules SET isFallback = 1 WHERE mode = 'single'");
+  }
+  if (!autoReplyColumns.has('startTime')) db.run('ALTER TABLE auto_reply_rules ADD COLUMN startTime TEXT');
+  if (!autoReplyColumns.has('endTime')) db.run('ALTER TABLE auto_reply_rules ADD COLUMN endTime TEXT');
 }
 
 /**
@@ -438,21 +447,21 @@ function deleteQuickMessage(id) {
 }
 
 function getAutoReplyRules() {
-  return queryAll('SELECT id, keyword, reply, mode, cooldownHours, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled, createdAt, updatedAt FROM auto_reply_rules ORDER BY updatedAt DESC');
+  return queryAll('SELECT id, keyword, reply, mode, cooldownHours, isFallback, startTime, endTime, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled, createdAt, updatedAt FROM auto_reply_rules ORDER BY updatedAt DESC');
 }
 
-function saveAutoReplyRule({ id, keyword, reply, mode = 'keyword', cooldownHours = 24, attachmentId = null, attachmentName = null, attachmentMimeType = null, attachmentKind = null, enabled = true }) {
+function saveAutoReplyRule({ id, keyword, reply, mode = 'keyword', cooldownHours = 24, isFallback = false, startTime = null, endTime = null, attachmentId = null, attachmentName = null, attachmentMimeType = null, attachmentKind = null, enabled = true }) {
   const now = new Date().toISOString();
   const ruleId = id || `reply_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const existing = queryOne('SELECT id FROM auto_reply_rules WHERE id = ?', [ruleId]);
   if (existing) {
-    runAndPersist('UPDATE auto_reply_rules SET keyword = ?, reply = ?, mode = ?, cooldownHours = ?, attachmentId = ?, attachmentName = ?, attachmentMimeType = ?, attachmentKind = ?, enabled = ?, updatedAt = ? WHERE id = ?',
-      [keyword, reply, mode, cooldownHours, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled ? 1 : 0, now, ruleId]);
+    runAndPersist('UPDATE auto_reply_rules SET keyword = ?, reply = ?, mode = ?, cooldownHours = ?, isFallback = ?, startTime = ?, endTime = ?, attachmentId = ?, attachmentName = ?, attachmentMimeType = ?, attachmentKind = ?, enabled = ?, updatedAt = ? WHERE id = ?',
+      [keyword, reply, mode, cooldownHours, isFallback ? 1 : 0, startTime, endTime, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled ? 1 : 0, now, ruleId]);
   } else {
-    runAndPersist('INSERT INTO auto_reply_rules (id, keyword, reply, mode, cooldownHours, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [ruleId, keyword, reply, mode, cooldownHours, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled ? 1 : 0, now, now]);
+    runAndPersist('INSERT INTO auto_reply_rules (id, keyword, reply, mode, cooldownHours, isFallback, startTime, endTime, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [ruleId, keyword, reply, mode, cooldownHours, isFallback ? 1 : 0, startTime, endTime, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled ? 1 : 0, now, now]);
   }
-  return queryOne('SELECT id, keyword, reply, mode, cooldownHours, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled, createdAt, updatedAt FROM auto_reply_rules WHERE id = ?', [ruleId]);
+  return queryOne('SELECT id, keyword, reply, mode, cooldownHours, isFallback, startTime, endTime, attachmentId, attachmentName, attachmentMimeType, attachmentKind, enabled, createdAt, updatedAt FROM auto_reply_rules WHERE id = ?', [ruleId]);
 }
 
 function setAutoReplyRuleEnabled(id, enabled) {

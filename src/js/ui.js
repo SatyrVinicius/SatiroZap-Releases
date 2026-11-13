@@ -756,9 +756,14 @@ export const UI = {
       content.className = 'auto-reply-rule-content';
       const keyword = document.createElement('span');
       keyword.className = 'auto-reply-rule-keyword';
-      keyword.textContent = rule.mode === 'single'
-        ? `Resposta única · intervalo de ${rule.cooldownHours || 24}h por contato`
-        : `Se receber: ${rule.keyword}`;
+      if (rule.mode === 'single') {
+        const scheduleLabel = Number(rule.isFallback) === 1
+          ? 'Geral (fallback)'
+          : `Todos os dias, ${rule.startTime}–${rule.endTime}`;
+        keyword.textContent = `Resposta única · ${scheduleLabel} · intervalo de ${rule.cooldownHours || 24}h por contato`;
+      } else {
+        keyword.textContent = `Se receber: ${rule.keyword}`;
+      }
       const reply = document.createElement('span');
       reply.className = 'auto-reply-rule-text';
       const mediaLabel = ({ audio: 'áudio', image: 'imagem', video: 'vídeo', document: 'documento' })[rule.attachmentKind] || 'arquivo';
@@ -813,10 +818,19 @@ export const UI = {
     const keywordInput = document.getElementById('autoReplyKeyword');
     const cooldownGroup = document.getElementById('autoReplyCooldownGroup');
     const cooldownInput = document.getElementById('autoReplyCooldownHours');
+    const singleTypeGroup = document.getElementById('autoReplySingleTypeGroup');
+    const singleType = document.getElementById('autoReplySingleType')?.value || 'fallback';
+    const timeRangeGroup = document.getElementById('autoReplyTimeRangeGroup');
+    const startTimeInput = document.getElementById('autoReplyStartTime');
+    const endTimeInput = document.getElementById('autoReplyEndTime');
     if (keywordGroup) keywordGroup.hidden = mode === 'single';
     if (keywordInput) keywordInput.required = mode === 'keyword';
     if (cooldownGroup) cooldownGroup.hidden = mode !== 'single';
     if (cooldownInput) cooldownInput.required = mode === 'single';
+    if (singleTypeGroup) singleTypeGroup.hidden = mode !== 'single';
+    if (timeRangeGroup) timeRangeGroup.hidden = mode !== 'single' || singleType !== 'schedule';
+    if (startTimeInput) startTimeInput.required = mode === 'single' && singleType === 'schedule';
+    if (endTimeInput) endTimeInput.required = mode === 'single' && singleType === 'schedule';
   },
 
   async editAutoReplyRule(rule) {
@@ -834,6 +848,9 @@ export const UI = {
     document.getElementById('autoReplyMode').value = rule.mode === 'single' ? 'single' : 'keyword';
     document.getElementById('autoReplyKeyword').value = rule.keyword || '';
     document.getElementById('autoReplyCooldownHours').value = String(rule.cooldownHours || 24);
+    document.getElementById('autoReplySingleType').value = Number(rule.isFallback) === 1 ? 'fallback' : 'schedule';
+    document.getElementById('autoReplyStartTime').value = rule.startTime || '';
+    document.getElementById('autoReplyEndTime').value = rule.endTime || '';
     document.getElementById('autoReplyText').value = rule.reply || '';
     this.updateAutoReplyModeFields();
     document.getElementById('autoReplySubmitBtn').textContent = 'Salvar alterações';
@@ -993,6 +1010,7 @@ export const UI = {
     });
 
     document.getElementById('autoReplyMode')?.addEventListener('change', () => this.updateAutoReplyModeFields());
+    document.getElementById('autoReplySingleType')?.addEventListener('change', () => this.updateAutoReplyModeFields());
     this.updateAutoReplyModeFields();
 
     document.getElementById('autoReplyAttachmentBtn')?.addEventListener('click', async (event) => {
@@ -1035,6 +1053,10 @@ export const UI = {
       const keyword = document.getElementById('autoReplyKeyword')?.value || '';
       const reply = document.getElementById('autoReplyText')?.value || '';
       const cooldownHours = Number(document.getElementById('autoReplyCooldownHours')?.value || 24);
+      const singleType = document.getElementById('autoReplySingleType')?.value || 'fallback';
+      const isFallback = mode === 'single' && singleType === 'fallback';
+      const startTime = mode === 'single' && !isFallback ? document.getElementById('autoReplyStartTime')?.value || '' : null;
+      const endTime = mode === 'single' && !isFallback ? document.getElementById('autoReplyEndTime')?.value || '' : null;
       submit.disabled = true;
       try {
         await API.saveAutoReplyRule({
@@ -1043,6 +1065,9 @@ export const UI = {
           keyword,
           reply,
           cooldownHours,
+          isFallback,
+          startTime,
+          endTime,
           attachmentId: this.autoReplyAttachment?.attachmentId || null
         });
         this.autoReplyAttachmentIsPending = false;

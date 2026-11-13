@@ -1009,6 +1009,25 @@
   margin-bottom: 0;
 }
 
+.auto-reply-time-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.auto-reply-time-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.auto-reply-time-field .input-box {
+  min-width: 0;
+  padding: 9px 8px;
+}
+
 .auto-reply-form .btn-primary {
   padding: 10px 14px;
   font-size: 0.9rem;
