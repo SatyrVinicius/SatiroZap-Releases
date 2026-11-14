@@ -43,6 +43,18 @@
   background: transparent;
 }
 
+.app-sidebar-phone {
+  width: 64px;
+  flex: 0 0 auto;
+  margin-top: -8px;
+  color: #aebac1;
+  font-size: 9.1px;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
+  -webkit-app-region: no-drag;
+}
+
 .app-sidebar-button {
   width: 46px;
   height: 46px;
@@ -196,6 +208,7 @@ body.browser-page-active .app-viewport {
 .browser-tabs-row {
   height: 42px;
   min-height: 42px;
+  position: relative;
   display: flex;
   align-items: stretch;
   gap: 8px;
@@ -281,6 +294,13 @@ body.browser-page-active .app-viewport {
   font-size: 17px;
   line-height: 1;
   transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.browser-collapsed-nav {
+  display: none;
+  width: 30px;
+  height: 36px;
+  flex: 0 0 30px;
 }
 
 .browser-chrome-toggle:hover,
@@ -385,8 +405,12 @@ body.browser-chrome-collapsed .browser-toolbar {
   display: none;
 }
 
+body.browser-chrome-collapsed .browser-collapsed-nav {
+  display: block;
+}
+
 body.browser-chrome-collapsed .browser-chrome-toggle {
-  margin: 0 auto;
+  margin: 0;
 }
 
 /* Header */
