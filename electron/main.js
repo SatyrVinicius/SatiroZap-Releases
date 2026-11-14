@@ -4,7 +4,7 @@
  * starts WhatsApp client, scheduler, and system tray.
  */
 
-const { app, BrowserWindow, WebContentsView, session, ipcMain, nativeImage, dialog, shell, safeStorage, protocol } = require('electron');
+const { app, BrowserWindow, WebContentsView, session, ipcMain, nativeImage, dialog, Menu, shell, safeStorage, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -418,6 +418,7 @@ function sendWhatsAppMessageFromLink(request) {
     })
     .catch(async (error) => {
       console.error('[WhatsApp] Could not send message from website link:', error);
+      if (await showWhatsAppNotConnectedDialog(error)) return;
       if (await showWhatsAppNumberUnavailableDialog(error)) return;
       notify('error', { message: error.message || 'Não foi possível enviar a mensagem pelo WhatsApp.' });
     })
@@ -442,6 +443,27 @@ async function showWhatsAppNumberUnavailableDialog(error) {
   return true;
 }
 
+async function showWhatsAppNotConnectedDialog(error) {
+  if (!/WhatsApp Web não está conectado/i.test(String(error?.message || error || ''))) return false;
+
+  const options = {
+    type: 'warning',
+    title: 'WhatsApp não conectado',
+    buttons: ['OK'],
+    defaultId: 0,
+    message: 'O WhatsApp não está conectado.',
+    detail: 'É necessário conectar sua conta. A aba do WhatsApp será aberta após confirmar.'
+  };
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    await dialog.showMessageBox(mainWindow, options);
+    setEmbeddedPage('whatsapp');
+  } else {
+    await dialog.showMessageBox(options);
+  }
+  return true;
+}
+
 function openWhatsAppChatFromLink(request) {
   const phone = normalizeWhatsAppPhone(request.phone);
   const notify = (status, details = {}) => {
@@ -458,6 +480,7 @@ function openWhatsAppChatFromLink(request) {
     })
     .catch(async (error) => {
       console.error('[WhatsApp] Could not open chat from link:', error);
+      if (await showWhatsAppNotConnectedDialog(error)) return;
       if (await showWhatsAppNumberUnavailableDialog(error)) return;
       notify('error', { message: error.message || 'Não foi possível abrir a conversa pelo WhatsApp.' });
     });
@@ -612,6 +635,24 @@ function createBrowserTab(initialUrl = 'https://pms.satirosistemas.com.br/') {
       console.warn('[Browser] Popup blocked:', error.message);
     }
     return { action: 'deny' };
+  });
+  view.webContents.on('context-menu', (_event, params) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+
+    const items = [];
+    if (params.isEditable) {
+      items.push(
+        { label: 'Recortar', enabled: params.editFlags.canCut, click: () => view.webContents.cut() },
+        { label: 'Copiar', enabled: params.editFlags.canCopy, click: () => view.webContents.copy() },
+        { label: 'Colar', enabled: params.editFlags.canPaste, click: () => view.webContents.paste() },
+        { type: 'separator' }
+      );
+    } else if (params.selectionText) {
+      items.push({ label: 'Copiar', enabled: params.editFlags.canCopy, click: () => view.webContents.copy() });
+    }
+    items.push({ label: 'Selecionar tudo', enabled: params.editFlags.canSelectAll, click: () => view.webContents.selectAll() });
+
+    Menu.buildFromTemplate(items).popup({ window: mainWindow });
   });
   const allowSecureNavigation = (event, url) => {
     const whatsappRequest = getWhatsAppSendRequest(url);
