@@ -416,11 +416,30 @@ function sendWhatsAppMessageFromLink(request) {
         }
       });
     })
-    .catch((error) => {
+    .catch(async (error) => {
       console.error('[WhatsApp] Could not send message from website link:', error);
+      if (await showWhatsAppNumberUnavailableDialog(error)) return;
       notify('error', { message: error.message || 'Não foi possível enviar a mensagem pelo WhatsApp.' });
     })
     .finally(() => pendingWhatsAppLinkSends.delete(requestKey));
+}
+
+async function showWhatsAppNumberUnavailableDialog(error) {
+  if (!/não tem WhatsApp|não está registrado no WhatsApp|não foi encontrado/i.test(String(error?.message || error || ''))) {
+    return false;
+  }
+
+  const options = {
+    type: 'warning',
+    title: 'Número sem WhatsApp',
+    buttons: ['OK'],
+    defaultId: 0,
+    message: 'Este número não tem WhatsApp ou não foi encontrado.',
+    detail: 'Confira o número e tente novamente.'
+  };
+  if (mainWindow && !mainWindow.isDestroyed()) await dialog.showMessageBox(mainWindow, options);
+  else await dialog.showMessageBox(options);
+  return true;
 }
 
 function openWhatsAppChatFromLink(request) {
@@ -432,11 +451,14 @@ function openWhatsAppChatFromLink(request) {
   };
 
   notify('opening');
-  setEmbeddedPage('whatsapp');
   whatsappClient.openChat(phone)
-    .then(() => notify('opened'))
-    .catch((error) => {
+    .then(() => {
+      setEmbeddedPage('whatsapp');
+      notify('opened');
+    })
+    .catch(async (error) => {
       console.error('[WhatsApp] Could not open chat from link:', error);
+      if (await showWhatsAppNumberUnavailableDialog(error)) return;
       notify('error', { message: error.message || 'Não foi possível abrir a conversa pelo WhatsApp.' });
     });
 }
@@ -1235,6 +1257,9 @@ function registerIpcHandlers() {
 
   ipcMain.handle('messages:send-now', async (_event, id) => {
     const result = await scheduler.sendImmediately(id);
+    if (result?.status === 'FAILED') {
+      throw new Error(result.errorReason || 'Não foi possível enviar a mensagem pelo WhatsApp.');
+    }
     return { success: true, message: result };
   });
 

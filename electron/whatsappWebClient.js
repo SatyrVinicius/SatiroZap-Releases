@@ -296,7 +296,7 @@ class WhatsAppWebClient {
       } catch (error) {
         throw new Error('A consulta do número no WhatsApp falhou: ' + (error.message || error));
       }
-      if (!contact) throw new Error('Este número não está registrado no WhatsApp ou não pode ser encontrado.');
+      if (!contact) throw new Error('Este número não tem WhatsApp ou não foi encontrado. Confira o número e tente novamente.');
       const targetJid = contact.lid?._serialized || contact.wid?._serialized || contact.wid?.toString?.() || jid;
       let opened;
       try {
@@ -478,6 +478,14 @@ class WhatsAppWebClient {
         const payload = JSON.stringify({ jid, attachment: attachmentPayload, messageText: messageText || '' });
         result = await this.executeInWhatsAppPage(`(async () => {
           const a = ${payload};
+          if (!window.WPP?.contact?.queryWidExists) throw new Error('A resolução de contatos do WhatsApp ainda está carregando.');
+          let contact;
+          try {
+            contact = await window.WPP.contact.queryWidExists(a.jid);
+          } catch (error) {
+            throw new Error('A consulta do número no WhatsApp falhou: ' + (error.message || error));
+          }
+          if (!contact) throw new Error('Este número não tem WhatsApp ou não foi encontrado. Confira o número e tente novamente.');
           if (!window.WPP?.chat?.sendFileMessage) throw new Error('A integração com o WhatsApp ainda está carregando.');
           const options = { type: a.attachment.kind, filename: a.attachment.filename, mimetype: a.attachment.mimetype };
           if (a.attachment.kind !== 'audio' && a.messageText) options.caption = a.messageText;
@@ -504,7 +512,7 @@ class WhatsAppWebClient {
           } catch (error) {
             throw new Error('A consulta do número no WhatsApp falhou: ' + (error.message || error));
           }
-          if (!contact) throw new Error('Este número não está registrado no WhatsApp ou não pode ser encontrado.');
+          if (!contact) throw new Error('Este número não tem WhatsApp ou não foi encontrado. Confira o número e tente novamente.');
           let targetJid = contact.lid?._serialized || contact.wid?._serialized || contact.wid?.toString?.() || a.jid;
           if (a.openChatFirst) {
             if (!window.WPP.chat.openChatBottom || !window.WPP.chat.getActiveChat) {
