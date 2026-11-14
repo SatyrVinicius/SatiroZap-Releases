@@ -22,8 +22,20 @@ function getWhatsAppSendRequest(input) {
 }
 
 function normalizeWhatsAppPhone(input) {
-  const phone = String(input || '').replace(/\D/g, '');
-  return phone.length === 13 ? phone.slice(0, 4) + phone.slice(5) : phone;
+  return String(input || '').replace(/\D/g, '');
 }
 
-module.exports = { getWhatsAppSendRequest, normalizeWhatsAppPhone };
+function getWhatsAppPhoneCandidates(input) {
+  const phone = normalizeWhatsAppPhone(input);
+  const candidates = [phone];
+
+  if (phone.startsWith('55') && phone.length === 13 && phone[4] === '9') {
+    candidates.push(phone.slice(0, 4) + phone.slice(5));
+  } else if (phone.length === 11 && phone[2] === '9') {
+    candidates.push(phone.slice(0, 2) + phone.slice(3));
+  }
+
+  return candidates;
+}
+
+module.exports = { getWhatsAppSendRequest, normalizeWhatsAppPhone, getWhatsAppPhoneCandidates };

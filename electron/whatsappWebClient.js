@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { WebContentsView, session } = require('electron');
+const { getWhatsAppPhoneCandidates } = require('./whatsappLink');
 
 const WHATSAPP_URL = 'https://web.whatsapp.com/';
 const MAX_MEDIA_ATTACHMENT_SIZE = 16 * 1024 * 1024;
@@ -283,18 +284,25 @@ class WhatsAppWebClient {
     const cleanPhone = String(phone || '').replace(/\D/g, '');
     if (!/^\d{7,15}$/.test(cleanPhone)) throw new Error('Número de telefone inválido.');
 
-    const jid = `${cleanPhone}@s.whatsapp.net`;
+    const jids = getWhatsAppPhoneCandidates(cleanPhone).map((candidate) => `${candidate}@s.whatsapp.net`);
     const activeChatId = await this.executeInWhatsAppPage(`(async () => {
-      const jid = ${JSON.stringify(jid)};
+      const jids = ${JSON.stringify(jids)};
       if (!window.WPP?.contact?.queryWidExists) throw new Error('A resolução de contatos do WhatsApp ainda está carregando.');
       if (!window.WPP?.chat?.openChatBottom || !window.WPP.chat.getActiveChat) {
         throw new Error('O WhatsApp ainda não disponibilizou a abertura de conversas.');
       }
-      let contact;
-      try {
-        contact = await window.WPP.contact.queryWidExists(jid);
-      } catch (error) {
-        throw new Error('A consulta do número no WhatsApp falhou: ' + (error.message || error));
+      let contact = null;
+      let jid = jids[0];
+      for (const candidate of jids) {
+        try {
+          contact = await window.WPP.contact.queryWidExists(candidate);
+        } catch (error) {
+          throw new Error('A consulta do número no WhatsApp falhou: ' + (error.message || error));
+        }
+        if (contact) {
+          jid = candidate;
+          break;
+        }
       }
       if (!contact) throw new Error('Este número não tem WhatsApp ou não foi encontrado. Confira o número e tente novamente.');
       const targetJid = contact.lid?._serialized || contact.wid?._serialized || contact.wid?.toString?.() || jid;
@@ -458,7 +466,7 @@ class WhatsAppWebClient {
   async sendMessage(phone, messageText, attachment = null, options = {}) {
     const cleanPhone = String(phone || '').replace(/\D/g, '');
     if (!/^\d{7,15}$/.test(cleanPhone)) throw new Error(`Número de telefone inválido: ${phone}`);
-    const jid = `${cleanPhone}@c.us`;
+    const jids = getWhatsAppPhoneCandidates(cleanPhone).map((candidate) => `${candidate}@c.us`);
 
     try {
       let result;
@@ -475,17 +483,25 @@ class WhatsAppWebClient {
         const kind = getAttachmentKind(attachment.attachmentKind, fileStats.size);
         if (!['image', 'video', 'audio', 'document'].includes(kind)) throw new Error('Tipo de arquivo não compatível.');
         const attachmentPayload = createAttachmentPayload({ ...attachment, attachmentKind: kind }, attachmentPath);
-        const payload = JSON.stringify({ jid, attachment: attachmentPayload, messageText: messageText || '' });
+        const payload = JSON.stringify({ jids, attachment: attachmentPayload, messageText: messageText || '' });
         result = await this.executeInWhatsAppPage(`(async () => {
           const a = ${payload};
           if (!window.WPP?.contact?.queryWidExists) throw new Error('A resolução de contatos do WhatsApp ainda está carregando.');
-          let contact;
-          try {
-            contact = await window.WPP.contact.queryWidExists(a.jid);
-          } catch (error) {
-            throw new Error('A consulta do número no WhatsApp falhou: ' + (error.message || error));
+          let contact = null;
+          let targetJid = a.jids[0];
+          for (const candidate of a.jids) {
+            try {
+              contact = await window.WPP.contact.queryWidExists(candidate);
+            } catch (error) {
+              throw new Error('A consulta do número no WhatsApp falhou: ' + (error.message || error));
+            }
+            if (contact) {
+              targetJid = contact.lid?._serialized || contact.wid?._serialized || contact.wid?.toString?.() || candidate;
+              break;
+            }
           }
           if (!contact) throw new Error('Este número não tem WhatsApp ou não foi encontrado. Confira o número e tente novamente.');
+          if (contact) targetJid = contact.lid?._serialized || contact.wid?._serialized || contact.wid?.toString?.() || targetJid;
           if (!window.WPP?.chat?.sendFileMessage) throw new Error('A integração com o WhatsApp ainda está carregando.');
           const options = { type: a.attachment.kind, filename: a.attachment.filename, mimetype: a.attachment.mimetype };
           if (a.attachment.kind !== 'audio' && a.messageText) options.caption = a.messageText;
@@ -495,25 +511,32 @@ class WhatsAppWebClient {
             if (!response.ok) throw new Error('Não foi possível carregar o documento anexado.');
             content = await response.blob();
           }
-          const sent = await window.WPP.chat.sendFileMessage(a.jid, content, options);
-          if (a.attachment.kind === 'audio' && a.messageText) await window.WPP.chat.sendTextMessage(a.jid, a.messageText);
+          const sent = await window.WPP.chat.sendFileMessage(targetJid, content, options);
+          if (a.attachment.kind === 'audio' && a.messageText) await window.WPP.chat.sendTextMessage(targetJid, a.messageText);
           const messageId = sent?.id?._serialized || sent?.id;
           return typeof messageId === 'string' ? messageId : '';
         })()`);
       } else {
-        const payload = JSON.stringify({ jid, text: messageText || '', openChatFirst: options.openChatFirst === true });
+        const payload = JSON.stringify({ jids, text: messageText || '', openChatFirst: options.openChatFirst === true });
         result = await this.executeInWhatsAppPage(`(async () => {
           const a = ${payload};
           if (!window.WPP?.chat?.sendTextMessage) throw new Error('A integração com o WhatsApp ainda está carregando.');
           if (!window.WPP?.contact?.queryWidExists) throw new Error('A resolução de contatos do WhatsApp ainda está carregando.');
-          let contact;
-          try {
-            contact = await window.WPP.contact.queryWidExists(a.jid);
-          } catch (error) {
-            throw new Error('A consulta do número no WhatsApp falhou: ' + (error.message || error));
+          let contact = null;
+          let targetJid = a.jids[0];
+          for (const candidate of a.jids) {
+            try {
+              contact = await window.WPP.contact.queryWidExists(candidate);
+            } catch (error) {
+              throw new Error('A consulta do número no WhatsApp falhou: ' + (error.message || error));
+            }
+            if (contact) {
+              targetJid = candidate;
+              break;
+            }
           }
           if (!contact) throw new Error('Este número não tem WhatsApp ou não foi encontrado. Confira o número e tente novamente.');
-          let targetJid = contact.lid?._serialized || contact.wid?._serialized || contact.wid?.toString?.() || a.jid;
+          targetJid = contact.lid?._serialized || contact.wid?._serialized || contact.wid?.toString?.() || targetJid;
           if (a.openChatFirst) {
             if (!window.WPP.chat.openChatBottom || !window.WPP.chat.getActiveChat) {
               throw new Error('O WhatsApp ainda não disponibilizou a abertura de conversas.');
