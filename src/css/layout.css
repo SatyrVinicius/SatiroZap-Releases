@@ -86,11 +86,10 @@
   background: transparent;
 }
 
-.app-sidebar-whatsapp-logo {
+.app-sidebar-support-logo {
   width: 34px;
-  height: 34px;
-  color: #25d366;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.24));
+  height: 45px;
+  object-fit: contain;
 }
 
 .app-sidebar-logo-button {
