@@ -21,6 +21,16 @@ function getWhatsAppSendRequest(input) {
   }
 }
 
+function getWhatsAppWebChatUrl(input) {
+  const request = getWhatsAppSendRequest(input);
+  if (!request) return null;
+
+  const url = new URL('https://web.whatsapp.com/send');
+  url.searchParams.set('phone', request.phone);
+  if (request.message) url.searchParams.set('text', request.message);
+  return url.toString();
+}
+
 function normalizeWhatsAppPhone(input) {
   return String(input || '').replace(/\D/g, '');
 }
@@ -38,4 +48,4 @@ function getWhatsAppPhoneCandidates(input) {
   return candidates;
 }
 
-module.exports = { getWhatsAppSendRequest, normalizeWhatsAppPhone, getWhatsAppPhoneCandidates };
+module.exports = { getWhatsAppSendRequest, getWhatsAppWebChatUrl, normalizeWhatsAppPhone, getWhatsAppPhoneCandidates };

@@ -241,6 +241,18 @@ class WhatsAppWebClient {
     return this.getStatus();
   }
 
+  async openChatUrl(url) {
+    const target = new URL(url);
+    if (target.origin !== 'https://web.whatsapp.com' || target.pathname !== '/send') {
+      throw new Error('Endereço de conversa do WhatsApp inválido.');
+    }
+
+    this.showWindow();
+    this.pageLoaded = false;
+    await this.webContents.loadURL(target.toString());
+    return true;
+  }
+
   isPageLoaded() {
     return this.pageLoaded;
   }

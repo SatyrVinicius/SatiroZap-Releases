@@ -11,7 +11,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const database = require('./database');
-const { getWhatsAppSendRequest, normalizeWhatsAppPhone } = require('./whatsappLink');
+const { getWhatsAppSendRequest, getWhatsAppWebChatUrl, normalizeWhatsAppPhone } = require('./whatsappLink');
 const { isValidTimeRange, rangesOverlap, selectSingleAutoReplyRule } = require('./autoReplySchedule');
 const { whatsappClient } = require('./whatsappWebClient');
 const { scheduler } = require('./scheduler');
@@ -84,6 +84,7 @@ const ACCESS_CREDENTIAL_FILE = 'satirozap-access.bin';
 const SIDEBAR_WIDTH = 64;
 const BROWSER_CHROME_HEIGHT = 112;
 const BROWSER_CHROME_COLLAPSED_HEIGHT = 40;
+const SUPPORT_WHATSAPP_URL = 'https://api.whatsapp.com/send/?phone=5584933004200&text=Ol%C3%A1%2C+S%C3%A1tiro+Sistemas%21+Preciso+de+ajuda&type=phone_number&app_absent=0';
 const MEDIA_TYPES = {
   '.jpg': { mimeType: 'image/jpeg', kind: 'image' },
   '.jpeg': { mimeType: 'image/jpeg', kind: 'image' },
@@ -1235,9 +1236,10 @@ function registerIpcHandlers() {
 
   ipcMain.handle('whatsapp:open-support', async (event) => {
     if (!isMainRendererEvent(event)) throw new Error('Origem inválida para abrir o suporte.');
-    const supportMessage = encodeURIComponent('Olá, Sátiro Sistemas! Preciso de ajuda');
-    await shell.openExternal(`https://wa.me/5584933004200?text=${supportMessage}`);
-    return true;
+    const supportChatUrl = getWhatsAppWebChatUrl(SUPPORT_WHATSAPP_URL);
+    if (!supportChatUrl) throw new Error('O endereço de suporte do WhatsApp é inválido.');
+    setEmbeddedPage('whatsapp');
+    return whatsappClient.openChatUrl(supportChatUrl);
   });
 
   ipcMain.handle('whatsapp:connect', async () => {
