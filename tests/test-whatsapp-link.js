@@ -8,10 +8,16 @@ assert.equal(request?.phone, '5584933004200');
 const supportChatUrl = getWhatsAppWebChatUrl(
 	'https://api.whatsapp.com/send/?phone=5584933004200&text=Olá%2C+Sátiro+Sistemas%21+Preciso+de+ajuda&type=phone_number&app_absent=0'
 );
+const supportRequest = getWhatsAppSendRequest(
+	'https://api.whatsapp.com/send/?phone=5584933004200&text=Olá%2C+Sátiro+Sistemas%21+Preciso+de+ajuda&type=phone_number&app_absent=0'
+);
 assert.equal(new URL(supportChatUrl).origin, 'https://web.whatsapp.com');
 assert.equal(new URL(supportChatUrl).pathname, '/send');
 assert.equal(new URL(supportChatUrl).searchParams.get('phone'), '5584933004200');
 assert.equal(new URL(supportChatUrl).searchParams.get('text'), 'Olá, Sátiro Sistemas! Preciso de ajuda');
+assert.equal(supportRequest?.phone, '5584933004200');
+assert.equal(supportRequest?.message, 'Olá, Sátiro Sistemas! Preciso de ajuda');
+assert.equal(supportRequest?.openOnly, false);
 assert.equal(getWhatsAppWebChatUrl('https://example.com/send?phone=1234567&text=oi'), null);
 assert.ok(request.message.startsWith('🏨 RESUMO DA RESERVA\n\n👤 HÓSPEDE RESPONSÁVEL'));
 assert.ok(request.message.includes('Acomodação: Luxo - 2'));

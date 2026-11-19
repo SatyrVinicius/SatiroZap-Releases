@@ -1236,10 +1236,29 @@ function registerIpcHandlers() {
 
   ipcMain.handle('whatsapp:open-support', async (event) => {
     if (!isMainRendererEvent(event)) throw new Error('Origem inválida para abrir o suporte.');
-    const supportChatUrl = getWhatsAppWebChatUrl(SUPPORT_WHATSAPP_URL);
-    if (!supportChatUrl) throw new Error('O endereço de suporte do WhatsApp é inválido.');
+    const request = getWhatsAppSendRequest(SUPPORT_WHATSAPP_URL);
+    if (!request || request.openOnly) throw new Error('A mensagem de suporte do WhatsApp é inválida.');
     setEmbeddedPage('whatsapp');
-    return whatsappClient.openChatUrl(supportChatUrl);
+    const phone = normalizeWhatsAppPhone(request.phone);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('whatsapp:link-send-status', { status: 'sending', phone });
+    }
+    try {
+      const result = await whatsappClient.sendMessage(phone, request.message, null, { openChatFirst: true });
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('whatsapp:link-send-status', { status: 'success', phone });
+      }
+      return result;
+    } catch (error) {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('whatsapp:link-send-status', {
+          status: 'error',
+          phone,
+          message: error.message || 'Não foi possível enviar a mensagem ao suporte.'
+        });
+      }
+      throw error;
+    }
   });
 
   ipcMain.handle('whatsapp:connect', async () => {

@@ -50,10 +50,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   window.api.onEmbeddedPageChanged(updateNavigationState);
   supportLogoButton.addEventListener('click', async () => {
+    supportLogoButton.disabled = true;
     try {
       await window.api.openWhatsAppSupport();
     } catch (error) {
       UI.showToast(error.message || 'Não foi possível abrir o suporte.', 'error');
+    } finally {
+      supportLogoButton.disabled = false;
     }
   });
   window.api.onWhatsAppLinkSendStatus(({ status, phone, message }) => {
