@@ -1233,6 +1233,12 @@ function registerIpcHandlers() {
     return whatsappClient.getStatus();
   });
 
+  ipcMain.handle('whatsapp:open-support', async (event) => {
+    if (!isMainRendererEvent(event)) throw new Error('Origem inválida para abrir o suporte.');
+    await shell.openExternal('https://api.whatsapp.com/send/?phone=5584933004200&text=Olá%2C+Sátiro+Sistemas%21+Preciso+de+ajuda&type=phone_number&app_absent=0');
+    return true;
+  });
+
   ipcMain.handle('whatsapp:connect', async () => {
     setEmbeddedPage('whatsapp');
     return whatsappClient.connect();

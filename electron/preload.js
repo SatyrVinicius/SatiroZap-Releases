@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('api', {
   // WhatsApp Connection
   // ============================
   getWhatsAppStatus: () => ipcRenderer.invoke('whatsapp:get-status'),
+  openWhatsAppSupport: () => ipcRenderer.invoke('whatsapp:open-support'),
   connectWhatsApp: () => ipcRenderer.invoke('whatsapp:connect'),
   logoutWhatsApp: () => ipcRenderer.invoke('whatsapp:logout'),
 

@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const navigationButtons = [...document.querySelectorAll('[data-embedded-page]')];
   const whatsappSidebarButton = document.querySelector('.app-sidebar-button[data-embedded-page="whatsapp"]');
+  const supportLogoButton = document.getElementById('supportLogoButton');
   const updateNavigationState = (activePage) => {
     navigationButtons.forEach((button) => {
       const active = button.dataset.embeddedPage === activePage;
@@ -48,6 +49,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   window.api.onEmbeddedPageChanged(updateNavigationState);
+  supportLogoButton.addEventListener('click', async () => {
+    try {
+      const { status } = await window.api.getWhatsAppStatus();
+      if (status === 'connecting' || status === 'reconnecting') {
+        await window.api.openWhatsAppSupport();
+      }
+    } catch (error) {
+      UI.showToast(error.message || 'Não foi possível abrir o suporte.', 'error');
+    }
+  });
   window.api.onWhatsAppLinkSendStatus(({ status, phone, message }) => {
     if (status === 'sending') UI.showToast(`Enviando mensagem para +${phone}...`, 'info');
     else if (status === 'opening') UI.showToast(`Abrindo conversa com +${phone}...`, 'info');

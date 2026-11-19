@@ -79,12 +79,30 @@
 .app-sidebar-logo {
   width: 34px;
   height: 45px;
-  flex: 0 0 45px;
-  margin-top: auto;
+  display: block;
   object-fit: contain;
   padding: 0;
   border-radius: 0;
   background: transparent;
+}
+
+.app-sidebar-logo-button {
+  width: 46px;
+  height: 45px;
+  flex: 0 0 45px;
+  display: grid;
+  place-items: center;
+  margin-top: auto;
+  padding: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.app-sidebar-logo-button:hover,
+.app-sidebar-logo-button:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .app-sidebar-phone {
