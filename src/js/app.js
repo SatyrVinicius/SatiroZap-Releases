@@ -13,6 +13,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 2. Initialize UI & Event Handlers
   UI.init();
 
+  const updateBanner = document.getElementById('appUpdateBanner');
+  const updateMessage = document.getElementById('appUpdateMessage');
+  const updateButton = document.getElementById('appUpdateButton');
+  const showUpdateBanner = (update) => {
+    if (!update?.version) return;
+    updateMessage.textContent = `Você tem novas atualizações disponíveis (versão ${update.version}).`;
+    updateBanner.hidden = false;
+  };
+  window.api.onUpdateReady(showUpdateBanner);
+  window.api.getReadyUpdate().then(showUpdateBanner).catch((error) => {
+    console.error('Não foi possível verificar atualização baixada:', error);
+  });
+  updateButton.addEventListener('click', async () => {
+    updateButton.disabled = true;
+    updateButton.textContent = 'INSTALANDO...';
+    try {
+      await window.api.installUpdate();
+    } catch (error) {
+      updateButton.disabled = false;
+      updateButton.textContent = 'ATUALIZAR';
+      UI.showToast(error.message || 'Não foi possível iniciar a atualização.', 'error');
+    }
+  });
+
   const navigationButtons = [...document.querySelectorAll('[data-embedded-page]')];
   const whatsappSidebarButton = document.querySelector('.app-sidebar-button[data-embedded-page="whatsapp"]');
   const updateNavigationState = (activePage) => {

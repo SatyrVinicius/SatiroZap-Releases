@@ -496,12 +496,12 @@ class WhatsAppWebClient {
               throw new Error('A consulta do número no WhatsApp falhou: ' + (error.message || error));
             }
             if (contact) {
-              targetJid = contact.lid?._serialized || contact.wid?._serialized || contact.wid?.toString?.() || candidate;
+              targetJid = contact.wid?._serialized || contact.wid?.toString?.() || contact.lid?._serialized || candidate;
               break;
             }
           }
           if (!contact) throw new Error('Este número não tem WhatsApp ou não foi encontrado. Confira o número e tente novamente.');
-          if (contact) targetJid = contact.lid?._serialized || contact.wid?._serialized || contact.wid?.toString?.() || targetJid;
+          if (contact) targetJid = contact.wid?._serialized || contact.wid?.toString?.() || contact.lid?._serialized || targetJid;
           if (!window.WPP?.chat?.sendFileMessage) throw new Error('A integração com o WhatsApp ainda está carregando.');
           const options = { type: a.attachment.kind, filename: a.attachment.filename, mimetype: a.attachment.mimetype };
           if (a.attachment.kind !== 'audio' && a.messageText) options.caption = a.messageText;
@@ -536,7 +536,7 @@ class WhatsAppWebClient {
             }
           }
           if (!contact) throw new Error('Este número não tem WhatsApp ou não foi encontrado. Confira o número e tente novamente.');
-          targetJid = contact.lid?._serialized || contact.wid?._serialized || contact.wid?.toString?.() || targetJid;
+          targetJid = contact.wid?._serialized || contact.wid?.toString?.() || contact.lid?._serialized || targetJid;
           if (a.openChatFirst) {
             if (!window.WPP.chat.openChatBottom || !window.WPP.chat.getActiveChat) {
               throw new Error('O WhatsApp ainda não disponibilizou a abertura de conversas.');
@@ -551,7 +551,9 @@ class WhatsAppWebClient {
             const activeChat = await window.WPP.chat.getActiveChat();
             const activeChatId = activeChat?.id?._serialized || activeChat?.id?.toString?.() || '';
             if (!activeChatId) throw new Error('O WhatsApp abriu uma conversa sem identificador de destinatário.');
-            targetJid = activeChatId;
+            // Keep the canonical phone JID returned by queryWidExists. WhatsApp Web
+            // may expose the active chat as a LID, which breaks WA-JS sending on
+            // current WhatsApp builds (UserPrefs.getMeLidUserOrThrow is missing).
           }
           let sent;
           try {

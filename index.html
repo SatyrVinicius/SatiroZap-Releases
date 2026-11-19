@@ -17,6 +17,11 @@
 
 <body>
 
+  <section class="app-update-banner" id="appUpdateBanner" role="status" aria-live="polite" hidden>
+    <span id="appUpdateMessage">Você tem novas atualizações disponíveis.</span>
+    <button class="app-update-button" id="appUpdateButton" type="button">ATUALIZAR</button>
+  </section>
+
   <nav class="app-sidebar" aria-label="Navegação do aplicativo">
     <button class="app-sidebar-button app-sidebar-pms" type="button" data-embedded-page="google"
       aria-label="Abrir Sátiro PMS" title="Sátiro PMS — clique novamente para voltar à agenda">
@@ -54,6 +59,7 @@
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" /></svg>
       </button>
       <button class="browser-nav-button browser-reload browser-collapsed-nav" type="button" data-browser-action="reload" title="Atualizar" aria-label="Atualizar">↻</button>
+      <button class="browser-nav-button browser-close-current-tab browser-collapsed-nav" id="browserCloseCurrentTab" type="button" title="Fechar aba atual" aria-label="Fechar aba atual">×</button>
     </div>
     <form class="browser-toolbar" id="browserAddressForm">
       <button class="browser-nav-button" type="button" data-browser-action="back" title="Voltar" aria-label="Voltar">‹</button>

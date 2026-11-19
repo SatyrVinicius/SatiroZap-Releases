@@ -1,17 +1,19 @@
 {
   "name": "whatsapp-message-scheduler",
   "private": true,
-  "version": "5.2.0",
+  "version": "5.2.2",
   "description": "Aplicativo para computador para agendar e enviar mensagens do WhatsApp automaticamente",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win",
-    "build:dir": "electron-builder --win --dir"
+    "build:dir": "electron-builder --win --dir",
+    "release": "electron-builder --win --publish always"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.20",
-    "@wppconnect/wa-js": "^4.7.1",
+    "@wppconnect/wa-js": "^4.8.2",
+    "electron-updater": "^6.8.11",
     "pino": "^9.6.0",
     "pngjs": "^7.0.0",
     "qrcode": "^1.5.4",
@@ -26,6 +28,12 @@
     "productName": "SátiroPMS",
     "directories": {
       "output": "build_out"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "SatyrVinicius",
+      "repo": "SatiroZap-Releases",
+      "releaseType": "release"
     },
     "compression": "store",
     "artifactName": "SatiroPMS-Setup-${version}.${ext}",

@@ -8,6 +8,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
   controlWindow: (action) => ipcRenderer.invoke('window:control', action),
+  getReadyUpdate: () => ipcRenderer.invoke('updates:get-ready'),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
+  onUpdateReady: (callback) => {
+    const handler = (_event, update) => callback(update);
+    ipcRenderer.on('updates:ready', handler);
+    return () => ipcRenderer.removeListener('updates:ready', handler);
+  },
 
   // ============================
   // WhatsApp Connection

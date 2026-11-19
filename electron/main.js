@@ -5,6 +5,7 @@
  */
 
 const { app, BrowserWindow, WebContentsView, session, ipcMain, nativeImage, dialog, Menu, shell, safeStorage, protocol } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -31,6 +32,48 @@ let pendingAutomationContact = null;
 let mainRendererReady = false;
 const MAX_MEDIA_ATTACHMENT_SIZE = 16 * 1024 * 1024;
 const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024 * 1024;
+const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+let updateCheckTimer = null;
+let downloadedUpdateVersion = null;
+
+function initializeAutoUpdater() {
+  if (!app.isPackaged) return;
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowDowngrade = false;
+
+  autoUpdater.on('checking-for-update', () => {
+    console.info('[Updater] Checking for updates…');
+  });
+  autoUpdater.on('update-available', (info) => {
+    console.info(`[Updater] Version ${info.version} is available; downloading in background.`);
+  });
+  autoUpdater.on('update-not-available', (info) => {
+    console.info(`[Updater] Application is up to date (${info.version}).`);
+  });
+  autoUpdater.on('error', (error) => {
+    console.error('[Updater] Update check or download failed:', error.message);
+  });
+  autoUpdater.on('update-downloaded', (info) => {
+    console.info(`[Updater] Version ${info.version} downloaded.`);
+    downloadedUpdateVersion = info.version;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updates:ready', { version: downloadedUpdateVersion });
+    }
+  });
+
+  const checkForUpdates = () => {
+    if (app.isQuitting) return;
+    autoUpdater.checkForUpdates().catch((error) => {
+      console.error('[Updater] Update check failed:', error.message);
+    });
+  };
+
+  checkForUpdates();
+  updateCheckTimer = setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
+}
+
 protocol.registerSchemesAsPrivileged([{
   scheme: 'wpp-attachment',
   privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true }
@@ -1077,6 +1120,18 @@ function createWindow() {
 // Register all IPC Handlers
 // ================================================================
 function registerIpcHandlers() {
+  ipcMain.handle('updates:get-ready', (event) => {
+    if (!isMainRendererEvent(event)) throw new Error('Origem inválida para atualização.');
+    return downloadedUpdateVersion ? { version: downloadedUpdateVersion } : null;
+  });
+
+  ipcMain.handle('updates:install', (event) => {
+    if (!isMainRendererEvent(event)) throw new Error('Origem inválida para atualização.');
+    if (!downloadedUpdateVersion) return false;
+    autoUpdater.quitAndInstall();
+    return true;
+  });
+
   ipcMain.handle('window:control', (event, action) => {
     if (!isMainRendererEvent(event)) throw new Error('Origem inválida para os controles da janela.');
     if (!mainWindow || mainWindow.isDestroyed()) return false;
@@ -1638,6 +1693,7 @@ app.whenReady().then(async () => {
 
   // 6. Start the background scheduler
   scheduler.start();
+  initializeAutoUpdater();
 
   console.log('[App] WhatsApp Scheduler Desktop is running');
 });
@@ -1662,6 +1718,8 @@ app.on('activate', () => {
 
 app.on('before-quit', async () => {
   app.isQuitting = true;
+  if (updateCheckTimer) clearInterval(updateCheckTimer);
+  updateCheckTimer = null;
 
   for (const attachment of pendingAttachments.values()) {
     removeAttachmentFile(attachment.attachmentId, attachment.attachmentName);

@@ -1,3 +1,21 @@
+# Atualizações automáticas do Windows
+
+O aplicativo verifica atualizações ao iniciar e a cada seis horas quando estiver empacotado. Os arquivos de atualização são publicados em um repositório GitHub público separado, para manter o código-fonte privado. Quando um download termina, o app oferece reiniciar agora ou depois; se adiado, instala ao encerrar normalmente.
+
+## Configuração do mantenedor
+
+1. Use o repositório público `SatyrVinicius/SatiroZap-Releases` no GitHub. Ele é separado deste repositório de código e deve permanecer público para que os clientes baixem os arquivos sem credenciais.
+2. Crie um token fine-grained do GitHub com acesso de escrita a **Contents** somente nesse repositório de releases.
+3. No repositório privado de código, abra **Settings → Secrets and variables → Actions** e crie o secret `RELEASES_GH_TOKEN` com esse token. Não coloque o token no código ou no aplicativo.
+4. Antes de publicar, atualize a versão em `package.json` e no `package-lock.json`, faça commit e envie a alteração para o GitHub.
+5. Crie e envie uma tag `vX.Y.Z` igual à versão do `package.json` (por exemplo, `v5.2.1`). O workflow `.github/workflows/publish-windows-update.yml` compila o instalador Windows e publica o instalador, o `latest.yml` e o `.blockmap` no repositório de releases.
+
+Também é possível publicar manualmente em um ambiente com `GH_TOKEN` configurado, executando `npm run release`.
+
+## Clientes já instalados
+
+É necessária uma instalação manual única da primeira versão que contém o atualizador, pois a versão anterior ainda não conhece o mecanismo de atualização. Depois disso, versões publicadas com tags compatíveis serão detectadas e baixadas pelo aplicativo.
+
 # 📱 Agendador de mensagens do WhatsApp (versão para computador)
 
 Um aplicativo independente para Windows que agenda e envia mensagens do WhatsApp automaticamente usando uma janela integrada do **WhatsApp Web**.

@@ -4,6 +4,7 @@ export function initBrowserControls(onError = () => {}) {
   const addressInput = document.getElementById('browserAddress');
   const newTabButton = document.getElementById('browserNewTab');
   const chromeToggle = document.getElementById('browserChromeToggle');
+  const closeCurrentTabButton = document.getElementById('browserCloseCurrentTab');
   const historyButtons = [...document.querySelectorAll('[data-browser-action]')];
 
   let browserState = { activeTabId: null, tabs: [] };
@@ -63,6 +64,7 @@ export function initBrowserControls(onError = () => {}) {
       const action = button.dataset.browserAction;
       button.disabled = action === 'back' ? !selected?.canGoBack : action === 'forward' ? !selected?.canGoForward : false;
     });
+    closeCurrentTabButton.disabled = !selected;
   };
 
   const updatePageVisibility = (page) => {
@@ -102,6 +104,16 @@ export function initBrowserControls(onError = () => {}) {
   chromeToggle.addEventListener('click', async () => {
     try {
       render(await window.api.toggleBrowserChrome());
+    } catch (error) {
+      onError(error);
+    }
+  });
+
+  closeCurrentTabButton.addEventListener('click', async () => {
+    const selected = activeTab();
+    if (!selected) return;
+    try {
+      render(await window.api.closeBrowserTab(selected.id));
     } catch (error) {
       onError(error);
     }
