@@ -51,10 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.api.onEmbeddedPageChanged(updateNavigationState);
   supportLogoButton.addEventListener('click', async () => {
     try {
-      const { status } = await window.api.getWhatsAppStatus();
-      if (status === 'connecting' || status === 'reconnecting') {
-        await window.api.openWhatsAppSupport();
-      }
+      await window.api.openWhatsAppSupport();
     } catch (error) {
       UI.showToast(error.message || 'Não foi possível abrir o suporte.', 'error');
     }
