@@ -4,6 +4,7 @@ const { WebContentsView, session } = require('electron');
 const { getWhatsAppPhoneCandidates } = require('./whatsappLink');
 
 const WHATSAPP_URL = 'https://web.whatsapp.com/';
+const BACKGROUND_WARMUP_TIMEOUT_MS = 90000;
 const MAX_MEDIA_ATTACHMENT_SIZE = 16 * 1024 * 1024;
 const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024 * 1024;
 
@@ -43,6 +44,8 @@ class WhatsAppWebClient {
     this.userDataPath = null;
     this.isQuitting = false;
     this.isVisible = false;
+    this.isWarmingUp = false;
+    this.warmupTimer = null;
     this.injectionPromise = null;
     this.loadRetryTimer = null;
     this.loadRetryCount = 0;
@@ -83,7 +86,8 @@ class WhatsAppWebClient {
     });
 
     this.mainWindow.contentView.addChildView(this.view);
-    this.view.setVisible(this.isVisible);
+    this.isWarmingUp = !this.isVisible;
+    this.view.setVisible(this.isVisible || this.isWarmingUp);
     this.webContents = this.view.webContents;
     const webContents = this.webContents;
     webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -102,7 +106,9 @@ class WhatsAppWebClient {
         this.loadRetryCount = 0;
         if (this.loadRetryTimer) clearTimeout(this.loadRetryTimer);
         this.loadRetryTimer = null;
-        this.injectAutomation();
+        this.injectAutomation().then(() => {
+          if (this.status === 'connected' || this.status === 'qr_ready') this.finishBackgroundWarmup();
+        });
       }
     });
     webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
@@ -130,8 +136,30 @@ class WhatsAppWebClient {
     webContents.setUserAgent(userAgent);
     this.setStatus('connecting');
     const [width, height] = this.mainWindow.getContentSize();
-    this.view.setBounds({ x: 64, y: 0, width: Math.max(1, width - 64), height: Math.max(1, height) });
+    const viewWidth = Math.max(1, width - 64);
+    this.view.setBounds({
+      x: this.isWarmingUp ? -viewWidth - 64 : 64,
+      y: 0,
+      width: viewWidth,
+      height: Math.max(1, height)
+    });
+    if (this.isWarmingUp) {
+      this.warmupTimer = setTimeout(() => this.finishBackgroundWarmup(), BACKGROUND_WARMUP_TIMEOUT_MS);
+    }
     this.loadWhatsAppPage(webContents);
+  }
+
+  finishBackgroundWarmup() {
+    if (!this.isWarmingUp) return;
+    this.isWarmingUp = false;
+    if (this.warmupTimer) clearTimeout(this.warmupTimer);
+    this.warmupTimer = null;
+    if (!this.view || !this.webContents || this.webContents.isDestroyed()) return;
+    const [width, height] = this.mainWindow && !this.mainWindow.isDestroyed()
+      ? this.mainWindow.getContentSize()
+      : [1, 1];
+    this.view.setBounds({ x: 64, y: 0, width: Math.max(1, width - 64), height: Math.max(1, height) });
+    this.view.setVisible(this.isVisible);
   }
 
   loadWhatsAppPage(webContents = this.webContents) {
@@ -199,6 +227,9 @@ class WhatsAppWebClient {
 
   showWindow() {
     if (!this.view || !this.webContents || this.webContents.isDestroyed()) this.createView();
+    if (this.warmupTimer) clearTimeout(this.warmupTimer);
+    this.warmupTimer = null;
+    this.isWarmingUp = false;
     this.isVisible = true;
     this.view.setVisible(true);
     if (!this.pageLoaded && !this.webContents.isLoadingMainFrame()) this.loadWhatsAppPage();
@@ -216,11 +247,21 @@ class WhatsAppWebClient {
 
   setViewVisible(visible) {
     this.isVisible = Boolean(visible);
-    if (this.view && this.webContents && !this.webContents.isDestroyed()) this.view.setVisible(Boolean(visible));
+    if (this.isVisible) {
+      if (this.warmupTimer) clearTimeout(this.warmupTimer);
+      this.warmupTimer = null;
+      this.isWarmingUp = false;
+    }
+    if (this.view && this.webContents && !this.webContents.isDestroyed()) {
+      this.view.setVisible(this.isVisible || this.isWarmingUp);
+    }
   }
 
   setViewBounds(bounds) {
-    if (this.view && this.webContents && !this.webContents.isDestroyed()) this.view.setBounds(bounds);
+    if (!this.view || !this.webContents || this.webContents.isDestroyed()) return;
+    this.view.setBounds(this.isWarmingUp && !this.isVisible
+      ? { ...bounds, x: bounds.x - bounds.width - 1 }
+      : bounds);
   }
 
   isWebContents(webContents) {
@@ -238,6 +279,7 @@ class WhatsAppWebClient {
       phone: typeof user.phone === 'string' ? user.phone.replace(/\D/g, '').slice(0, 15) : null
     } : null;
     this.pushStatusToRenderer();
+    if (status === 'connected' || status === 'qr_ready') this.finishBackgroundWarmup();
   }
 
   getStatus() {
@@ -580,7 +622,10 @@ class WhatsAppWebClient {
   async destroy() {
     this.isQuitting = true;
     if (this.loadRetryTimer) clearTimeout(this.loadRetryTimer);
+    if (this.warmupTimer) clearTimeout(this.warmupTimer);
     this.loadRetryTimer = null;
+    this.warmupTimer = null;
+    this.isWarmingUp = false;
     if (this.view && this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.contentView.removeChildView(this.view);
     }
